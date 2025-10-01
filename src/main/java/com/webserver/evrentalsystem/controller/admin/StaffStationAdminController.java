@@ -77,6 +77,4 @@ public class StaffStationAdminController {
     ) {
         return ResponseEntity.ok(staffStationAdminService.listAssignments(stationId));
     }
-
-    //d
 }
