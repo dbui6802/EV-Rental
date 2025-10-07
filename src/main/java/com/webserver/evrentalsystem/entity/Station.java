@@ -1,5 +1,6 @@
 package com.webserver.evrentalsystem.entity;
 
+import com.webserver.evrentalsystem.jpaconverter.StationStatusJpaConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,6 +20,10 @@ public class Station {
 
     @Column(nullable = false)
     private String address;
+
+    @Convert(converter = StationStatusJpaConverter.class)
+    @Column(nullable = false)
+    private StationStatus status;
 
     @Column
     private Double latitude;

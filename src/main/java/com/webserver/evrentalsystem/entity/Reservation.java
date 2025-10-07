@@ -22,15 +22,8 @@ public class Reservation {
     private User renter;
 
     @ManyToOne
-    @JoinColumn(name = "vehicle_id")
+    @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
-
-    @Column(name = "vehicle_type")
-    private String vehicleType;
-
-    @ManyToOne
-    @JoinColumn(name = "station_id", nullable = false)
-    private Station station;
 
     @Column(name = "reserved_start_time", nullable = false)
     private LocalDateTime reservedStartTime;
@@ -47,7 +40,7 @@ public class Reservation {
 
     @Convert(converter = ReservationStatusJpaConverter.class)
     @Column(nullable = false)
-    private ReservationStatus status;
+    private ReservationStatus status; // pending, confirmed, cancelled, expired
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

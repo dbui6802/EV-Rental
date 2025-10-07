@@ -33,7 +33,7 @@ public class User {
     @Column(name = "role", nullable = false)
     private Role role; // renter, staff, admin
 
-    @Column(name = "refresh_token")
+    @Column(name = "refresh_token", columnDefinition = "TEXT")
     private String refreshToken;
 
     @Column(name = "created_at")

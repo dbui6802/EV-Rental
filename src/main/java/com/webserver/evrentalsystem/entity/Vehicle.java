@@ -31,8 +31,11 @@ public class Vehicle {
     @Column(nullable = false)
     private String model;
 
-    @Column
+    @Column(nullable = false)
     private Integer capacity;
+
+    @Column(name = "range_per_full_charge", nullable = false)
+    private Integer rangePerFullCharge;
 
     @Convert(converter = VehicleStatusJpaConverter.class)
     @Column(nullable = false)

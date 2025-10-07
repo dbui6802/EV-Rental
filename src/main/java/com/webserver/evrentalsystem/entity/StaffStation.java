@@ -27,6 +27,9 @@ public class StaffStation {
     @Column(name = "assigned_at")
     private LocalDateTime assignedAt;
 
+    @Column(name = "deactivated_at")
+    private LocalDateTime deactivatedAt;
+
     @Column(name = "is_active")
     private Boolean isActive;
 }

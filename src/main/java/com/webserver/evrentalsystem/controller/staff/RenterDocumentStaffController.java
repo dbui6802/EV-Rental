@@ -1,0 +1,37 @@
+package com.webserver.evrentalsystem.controller.staff;
+
+import com.webserver.evrentalsystem.model.dto.entitydto.DocumentDto;
+import com.webserver.evrentalsystem.service.staff.RenterDocumentStaffService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("api/staff/renter-document")
+@Tag(name = "3.2. Staff Renter Document", description = "API quản lý tài liệu của User bởi Staff")
+@SecurityRequirement(name = "bearerAuth")
+public class RenterDocumentStaffController {
+
+    @Autowired
+    private RenterDocumentStaffService renterDocumentStaffService;
+
+    @Operation(
+            summary = "Lấy danh sách tài liệu của Renter theo ID",
+            description = "API cho phép staff lấy toàn bộ danh sách tài liệu (Document) của một renter theo ID"
+    )
+    @GetMapping("/{renterId}")
+    public List<DocumentDto> getDocumentsByRenterId(
+            @Parameter(description = "ID của renter", required = true, example = "1")
+            @PathVariable Long renterId
+    ) {
+        return renterDocumentStaffService.getDocumentsByRenterId(renterId);
+    }
+}
