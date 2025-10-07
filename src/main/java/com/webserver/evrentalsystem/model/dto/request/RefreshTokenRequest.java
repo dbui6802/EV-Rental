@@ -1,4 +1,4 @@
-package com.webserver.evrentalsystem.model.dto;
+package com.webserver.evrentalsystem.model.dto.request;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

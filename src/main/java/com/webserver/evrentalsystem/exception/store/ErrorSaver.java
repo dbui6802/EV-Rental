@@ -13,7 +13,7 @@ public class ErrorSaver {
     private ErrorRepository errorRepository;
 
     public void saveErrorToDatabase(Exception e) {
-        try {
+       /* try {
             String message = e.getMessage();
             if (message == null) {
                 return;
@@ -40,6 +40,6 @@ public class ErrorSaver {
             }
         } catch (Exception ex) {
             ex.printStackTrace();
-        }
+        }*/
     }
 }
