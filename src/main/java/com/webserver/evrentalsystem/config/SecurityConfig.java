@@ -23,17 +23,7 @@ public class SecurityConfig {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity
-                .csrf(AbstractHttpConfigurer::disable);
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers("/auth").permitAll()
-////                        .requestMatchers("/admin/**").hasRole("ADMIN")
-////                        .requestMatchers("/moderator/**").hasAnyRole("MODERATOR", "ADMIN")
-////                        .anyRequest().hasAnyRole("USER", "MODERATOR", "ADMIN")
-//                );
-               // .addFilterBefore(new JwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-                //.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
+        httpSecurity.csrf(AbstractHttpConfigurer::disable);
         return httpSecurity.build();
     }
 }

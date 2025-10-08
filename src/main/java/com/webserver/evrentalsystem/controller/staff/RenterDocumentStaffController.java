@@ -7,10 +7,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -33,5 +30,17 @@ public class RenterDocumentStaffController {
             @PathVariable Long renterId
     ) {
         return renterDocumentStaffService.getDocumentsByRenterId(renterId);
+    }
+
+    @Operation(
+            summary = "Xác thực tài liệu của Renter",
+            description = "API cho phép staff xác thực một tài liệu (Document) của một renter"
+    )
+    @PutMapping("/verify/{documentId}")
+    public DocumentDto verifyDocument(
+            @Parameter(description = "ID của tài liệu cần xác thực", required = true, example = "1")
+            @PathVariable Long documentId
+    ) {
+        return renterDocumentStaffService.verifyDocument(documentId);
     }
 }

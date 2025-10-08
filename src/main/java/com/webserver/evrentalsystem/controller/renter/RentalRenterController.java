@@ -1,16 +1,18 @@
 package com.webserver.evrentalsystem.controller.renter;
 
-import com.webserver.evrentalsystem.model.dto.entitydto.RentalCheckDto;
+import com.webserver.evrentalsystem.entity.RentalStatus;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalDto;
-import com.webserver.evrentalsystem.model.dto.request.*;
 import com.webserver.evrentalsystem.service.renter.RentalRenterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -23,26 +25,32 @@ public class RentalRenterController {
     @Autowired
     private RentalRenterService rentalRenterService;
 
-    @Operation(summary = "Xem lượt thuê đang hoạt động")
-    @GetMapping("/current")
-    public List<RentalDto> getCurrentRentals() {
-        return rentalRenterService.getCurrentRentals();
-    }
+    @Operation(summary = "Lấy tất cả rental của một renter, có hỗ trợ lọc")
+    @GetMapping("/all")
+    public List<RentalDto> getAllRentals(
+            @Parameter(
+                    description = "Trạng thái rental",
+                    example = "booked",
+                    allowEmptyValue = true,
+                    schema = @Schema(
+                            type = "string",
+                            allowableValues = {
+                                    "booked",
+                                    "in_use",
+                                    "waiting_for_payment",
+                                    "returned",
+                                    "cancelled"
+                            }
+                    )
+            )
+            @RequestParam(required = false) String status,
 
-    @Operation(summary = "Xem biên bản giao/nhận xe")
-    @GetMapping("/{id}/checks")
-    public List<RentalCheckDto> getRentalChecks(
-            @Parameter(description = "ID lượt thuê", example = "101")
-            @PathVariable Long id) {
-        return rentalRenterService.getRentalChecks(id);
-    }
+            @Parameter(description = "Ngày bắt đầu (yyyy-MM-dd)", example = "2025-09-01")
+            @RequestParam(required = false) String fromDate,
 
-    @Operation(summary = "Trả xe tại trạm")
-    @PostMapping("/{id}/return")
-    public RentalDto returnVehicle(
-            @Parameter(description = "ID lượt thuê", example = "101")
-            @PathVariable Long id,
-            @Valid @RequestBody RentalReturnRequest request) {
-        return rentalRenterService.returnVehicle(id, request);
+            @Parameter(description = "Ngày kết thúc (yyyy-MM-dd)", example = "2025-09-30")
+            @RequestParam(required = false) String toDate
+    ) {
+        return rentalRenterService.getAllRentalsOfRenter(status, fromDate, toDate);
     }
 }
