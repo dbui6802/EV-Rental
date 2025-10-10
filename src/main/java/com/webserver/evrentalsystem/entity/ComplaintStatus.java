@@ -5,7 +5,6 @@ import lombok.Getter;
 @Getter
 public enum ComplaintStatus {
     PENDING("pending"),
-    IN_REVIEW("in_review"),
     RESOLVED("resolved"),
     REJECTED("rejected");
 

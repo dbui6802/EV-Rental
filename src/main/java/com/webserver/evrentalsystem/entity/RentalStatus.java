@@ -6,6 +6,7 @@ import lombok.Getter;
 public enum RentalStatus {
     BOOKED("booked"),
     IN_USE("in_use"),
+    WAITING_FOR_PAYMENT("waiting_for_payment"),
     RETURNED("returned"),
     CANCELLED("cancelled");
 

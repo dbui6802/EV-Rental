@@ -69,7 +69,7 @@ public class Rental {
 
     @Convert(converter = RentalStatusJpaConverter.class)
     @Column(nullable = false)
-    private RentalStatus status; // booked, in_use, returned, cancelled
+    private RentalStatus status; // booked, in_use, returned, waiting_for_payment, cancelled
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
