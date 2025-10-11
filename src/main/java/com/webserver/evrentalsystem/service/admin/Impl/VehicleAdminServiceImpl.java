@@ -124,6 +124,7 @@ public class VehicleAdminServiceImpl implements VehicleAdminService {
         if (request.getBrand() != null) vehicle.setBrand(request.getBrand());
         if (request.getModel() != null) vehicle.setModel(request.getModel());
         if (request.getCapacity() != null) vehicle.setCapacity(request.getCapacity());
+        if (request.getRangePerFullCharge() != null) vehicle.setRangePerFullCharge(request.getRangePerFullCharge());
 
         if (request.getStatus() != null) {
             VehicleStatus status = VehicleStatus.fromValue(request.getStatus());
