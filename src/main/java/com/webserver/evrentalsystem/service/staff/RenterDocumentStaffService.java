@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface RenterDocumentStaffService {
     List<DocumentDto> getDocumentsByRenterId(Long userId);
+    DocumentDto verifyDocument(Long documentId);
 }
