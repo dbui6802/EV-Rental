@@ -3,9 +3,9 @@ package com.webserver.evrentalsystem.service.staff;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalCheckDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.ReservationDto;
-import com.webserver.evrentalsystem.model.dto.request.ConfirmRentalRequest;
-import com.webserver.evrentalsystem.model.dto.request.RentalCheckInRequest;
-import com.webserver.evrentalsystem.model.dto.request.ReservationFilterRequest;
+import com.webserver.evrentalsystem.model.dto.entitydto.ViolationDto;
+import com.webserver.evrentalsystem.model.dto.request.*;
+import com.webserver.evrentalsystem.model.dto.response.BillResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -18,4 +18,10 @@ public interface RentalStaffService {
     RentalDto cancelRental(Long rentalId);
     RentalDto holdDeposit(Long rentalId);
     RentalCheckDto confirmPickup(ConfirmRentalRequest request, MultipartFile photo, MultipartFile staffSignature, MultipartFile customerSignature);
+    RentalCheckDto confirmReturn(ConfirmRentalRequest request, MultipartFile photo, MultipartFile staffSignature, MultipartFile customerSignature);
+    ViolationDto addViolation(ViolationRequest request);
+    List<ViolationDto> getViolationsByRentalId(Long rentalId);
+    BillResponse calculateBill(Long rentalId, BillRequest request);
+    void confirmPayment(Long rentalId);
+    RentalDto returnDeposit(Long rentalId);
 }
