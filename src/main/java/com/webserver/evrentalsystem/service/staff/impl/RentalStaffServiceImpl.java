@@ -7,12 +7,13 @@ import com.webserver.evrentalsystem.exception.NotFoundException;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalCheckDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.ReservationDto;
-import com.webserver.evrentalsystem.model.dto.request.ConfirmRentalRequest;
-import com.webserver.evrentalsystem.model.dto.request.RentalCheckInRequest;
-import com.webserver.evrentalsystem.model.dto.request.ReservationFilterRequest;
+import com.webserver.evrentalsystem.model.dto.entitydto.ViolationDto;
+import com.webserver.evrentalsystem.model.dto.request.*;
+import com.webserver.evrentalsystem.model.dto.response.BillResponse;
 import com.webserver.evrentalsystem.model.mapping.RentalCheckMapper;
 import com.webserver.evrentalsystem.model.mapping.RentalMapper;
 import com.webserver.evrentalsystem.model.mapping.ReservationMapper;
+import com.webserver.evrentalsystem.model.mapping.ViolationMapper;
 import com.webserver.evrentalsystem.repository.*;
 import com.webserver.evrentalsystem.service.staff.RentalStaffService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
@@ -59,6 +60,12 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
     @Autowired
     private RentalCheckMapper rentalCheckMapper;
+
+    @Autowired
+    private ViolationRepository violationRepository;
+
+    @Autowired
+    private ViolationMapper violationMapper;
 
     public List<ReservationDto> getReservations(ReservationFilterRequest filter) {
         List<Reservation> reservations = reservationRepository.findAll(
@@ -195,7 +202,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         // Kiểm tra tiền cọc
         BigDecimal minDeposit = rentalCost.multiply(BigDecimal.valueOf(0.3)); // Tiền cọc tối thiểu 30% tổng tiền thuê
         if (depositAmount != null && depositAmount.compareTo(minDeposit) < 0) {
-            throw new ConflictException("Tiền cọc phải lớn hơn hoặc bằng 30% tổng tiền thuê là " +minDeposit);
+            throw new ConflictException("Tiền cọc phải lớn hơn hoặc bằng 30% tổng tiền thuê là " + minDeposit);
         }
 
         Rental rental = new Rental();
@@ -317,5 +324,194 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         rentalCheck.setCreatedAt(LocalDateTime.now());
 
         return rentalCheckMapper.toRentalCheckDto(rentalCheckRepository.save(rentalCheck));
+    }
+
+    @Override
+    public RentalCheckDto confirmReturn(ConfirmRentalRequest request, MultipartFile photo, MultipartFile staffSignature, MultipartFile customerSignature) {
+        User staff = userValidation.validateStaff();
+        Long rentalId = request.getRentalId();
+        String conditionReport = request.getConditionReport();
+
+        if (photo == null || photo.isEmpty()) {
+            throw new InvalidateParamsException("photo không được để trống");
+        }
+        if (staffSignature == null || staffSignature.isEmpty()) {
+            throw new InvalidateParamsException("staffSignature không được để trống");
+        }
+        if (customerSignature == null || customerSignature.isEmpty()) {
+            throw new InvalidateParamsException("customerSignature không được để trống");
+        }
+        // check type must be "return"
+        CheckType checkType;
+        try {
+            checkType = CheckType.valueOf(request.getCheckType().toUpperCase());
+            if (checkType != CheckType.RETURN) {
+                throw new InvalidateParamsException("checkType phải là 'return'");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new InvalidateParamsException("checkType phải là 'return'");
+        }
+
+        Rental rental = rentalRepository.findById(rentalId).orElse(null);
+        if (rental == null) {
+            throw new NotFoundException("Lượt thuê (rental) không tồn tại");
+        }
+        if (rental.getStatus() != RentalStatus.IN_USE) {
+            throw new ConflictException("Chỉ có thể xác nhận trả xe khi lượt thuê ở trạng thái IN_USE");
+        }
+
+        // Cập nhật trạng thái xe thành RENTED
+        Vehicle vehicle = rental.getVehicle();
+        vehicle.setStatus(VehicleStatus.AVAILABLE);
+        vehicleRepository.save(vehicle);
+
+        // Cập nhật trạng thái rental thành WAITING_FOR_PAYMENT
+        rental.setStatus(RentalStatus.WAITING_FOR_PAYMENT);
+        rental.setStaffReturn(staff);
+        rentalRepository.save(rental);
+
+        // Lưu biên bản giao xe
+        RentalCheck rentalCheck = new RentalCheck();
+        rentalCheck.setRental(rental);
+        rentalCheck.setStaff(staff);
+        rentalCheck.setCheckType(checkType);
+        rentalCheck.setConditionReport(conditionReport);
+        // Lưu file ảnh và chữ ký lên server hoặc dịch vụ lưu trữ file, sau đó lấy URL
+        String photoUrl;
+        String staffSignatureUrl;
+        String customerSignatureUrl;
+        try {
+            photoUrl = FileStorageUtils.saveFile(photo);
+            staffSignatureUrl = FileStorageUtils.saveFile(staffSignature);
+            customerSignatureUrl = FileStorageUtils.saveFile(customerSignature);
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi lưu file", e);
+        }
+        rentalCheck.setPhotoUrl(photoUrl);
+        rentalCheck.setStaffSignatureUrl(staffSignatureUrl);
+        rentalCheck.setCustomerSignatureUrl(customerSignatureUrl);
+        rentalCheck.setCreatedAt(LocalDateTime.now());
+
+        return rentalCheckMapper.toRentalCheckDto(rentalCheckRepository.save(rentalCheck));
+    }
+
+    @Override
+    public ViolationDto addViolation(ViolationRequest request) {
+        User staff = userValidation.validateStaff();
+
+        Rental rental = rentalRepository.findById(request.getRentalId()).orElse(null);
+        if (rental == null) {
+            throw new NotFoundException("Lượt thuê (rental) không tồn tại");
+        }
+        if (rental.getStatus() != RentalStatus.IN_USE && rental.getStatus() != RentalStatus.WAITING_FOR_PAYMENT) {
+            throw new ConflictException("Chỉ có thể thêm chi phí phát sinh cho lượt thuê ở trạng thái IN_USE hoặc WAITING_FOR_PAYMENT");
+        }
+
+        Violation violation = new Violation();
+        violation.setRental(rental);
+        violation.setStaff(staff);
+        violation.setDescription(request.getDescription());
+        violation.setFineAmount(request.getFineAmount());
+        violation.setCreatedAt(LocalDateTime.now());
+
+        return violationMapper.toViolationDto(violationRepository.save(violation));
+    }
+
+    @Override
+    public List<ViolationDto> getViolationsByRentalId(Long rentalId) {
+        Rental rental = rentalRepository.findById(rentalId).orElse(null);
+        if (rental == null) {
+            throw new NotFoundException("Lượt thuê (rental) không tồn tại");
+        }
+
+        List<Violation> violations = violationRepository.findByRentalId(rentalId);
+        return violations.stream()
+                .map(violationMapper::toViolationDto)
+                .toList();
+    }
+
+    @Override
+    public BillResponse calculateBill(Long rentalId, BillRequest request) {
+        userValidation.validateStaff();
+        Rental rental = rentalRepository.findById(rentalId).orElse(null);
+        if (rental == null) {
+            throw new NotFoundException("Rental không tồn tại");
+        }
+        if (rental.getStatus() != RentalStatus.WAITING_FOR_PAYMENT) {
+            throw new ConflictException("Chỉ có thể tính bill cho rental đang ở trạng thái WAITING_FOR_PAYMENT");
+        }
+
+        Vehicle vehicle = rental.getVehicle();
+
+        // Thời gian thuê
+        LocalDateTime start = rental.getStartTime();
+        LocalDateTime end = request.getReturnTime();
+        if (end.isBefore(start)) {
+            throw new InvalidateParamsException("Thời gian trả xe không hợp lệ");
+        }
+
+        long hours = java.time.Duration.between(start, end).toHours();
+        if (hours == 0) hours = 1; // tối thiểu 1h
+
+        BigDecimal rentalCost = vehicle.getPricePerHour().multiply(BigDecimal.valueOf(hours));
+
+        // Tổng violation
+        List<Violation> violations = violationRepository.findByRentalId(rentalId);
+        BigDecimal violationCost = violations.stream()
+                .map(v -> v.getFineAmount() != null ? v.getFineAmount() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tổng bill
+        BigDecimal totalBill = rentalCost.add(violationCost);
+
+        // Cập nhật thời gian trả xe, tổng tiền thuê
+        rental.setEndTime(end);
+        rental.setTotalCost(rentalCost);
+        rentalRepository.save(rental);
+
+        return BillResponse.builder()
+                .rental(rentalMapper.toRentalDto(rental))
+                .rentalCost(rentalCost)
+                .violationCost(violationCost)
+                .totalBill(totalBill)
+                .build();
+    }
+
+    @Override
+    public void confirmPayment(Long rentalId) {
+        userValidation.validateStaff();
+        Rental rental = rentalRepository.findById(rentalId).orElse(null);
+        if (rental == null) {
+            throw new NotFoundException("Rental không tồn tại");
+        }
+
+        if (rental.getStatus() != RentalStatus.WAITING_FOR_PAYMENT) {
+            throw new ConflictException("Chỉ có thể xác nhận thanh toán cho rental đang ở trạng thái WAITING_FOR_PAYMENT");
+        }
+
+        // Cập nhật rental
+        rental.setStatus(RentalStatus.RETURNED);
+
+        rentalRepository.save(rental);
+    }
+
+    @Override
+    public RentalDto returnDeposit(Long rentalId) {
+        userValidation.validateStaff();
+        Rental rental = rentalRepository.findById(rentalId).orElse(null);
+        if (rental == null) {
+            throw new NotFoundException("Lượt thuê (rental) không tồn tại");
+        }
+        if (rental.getStatus() != RentalStatus.RETURNED) {
+            throw new ConflictException("Chỉ có thể trả tiền cọc cho lượt thuê ở trạng thái RETURNED");
+        }
+        if (rental.getDepositAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ConflictException("Lượt thuê không có tiền cọc để trả");
+        }
+        if (rental.getDepositStatus() == DepositStatus.REFUNDED) {
+            throw new ConflictException("Tiền cọc đã được trả trước đó");
+        }
+        rental.setDepositStatus(DepositStatus.REFUNDED);
+        return rentalMapper.toRentalDto(rentalRepository.save(rental));
     }
 }
