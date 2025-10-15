@@ -1,6 +1,7 @@
 package com.webserver.evrentalsystem.controller.staff;
 
 import com.webserver.evrentalsystem.model.dto.entitydto.DocumentDto;
+import com.webserver.evrentalsystem.model.dto.entitydto.UserDto;
 import com.webserver.evrentalsystem.service.staff.RenterDocumentStaffService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,6 +20,16 @@ public class RenterDocumentStaffController {
 
     @Autowired
     private RenterDocumentStaffService renterDocumentStaffService;
+
+    @Operation(summary = "Danh sách tất cả user")
+    @GetMapping
+    public List<UserDto> getAllUsers(
+            @Parameter(description = "Tìm theo số điện thoại (chuỗi con)")
+            @RequestParam(required = false)
+            String phone
+    ) {
+        return renterDocumentStaffService.getAllUsers(phone);
+    }
 
     @Operation(
             summary = "Lấy danh sách tài liệu của Renter theo ID",

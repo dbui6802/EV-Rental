@@ -1,6 +1,7 @@
 package com.webserver.evrentalsystem.controller.renter;
 
 import com.webserver.evrentalsystem.entity.RentalStatus;
+import com.webserver.evrentalsystem.model.dto.entitydto.RentalCheckDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalDto;
 import com.webserver.evrentalsystem.service.renter.RentalRenterService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,10 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -52,5 +50,13 @@ public class RentalRenterController {
             @RequestParam(required = false) String toDate
     ) {
         return rentalRenterService.getAllRentalsOfRenter(status, fromDate, toDate);
+    }
+
+    @Operation(summary = "Xem biên bản giao/nhận xe")
+    @GetMapping("/{id}/checks")
+    public List<RentalCheckDto> getRentalChecks(
+            @Parameter(description = "ID lượt thuê", example = "101")
+            @PathVariable Long id) {
+        return rentalRenterService.getRentalChecks(id);
     }
 }

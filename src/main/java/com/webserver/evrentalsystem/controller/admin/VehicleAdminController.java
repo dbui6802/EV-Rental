@@ -27,16 +27,23 @@ public class VehicleAdminController {
     private VehicleAdminService vehicleAdminService;
 
     @Operation(
-            summary = "Thêm xe mới",
-            description = "Admin thêm xe mới vào hệ thống",
+            summary = "Thêm xe mới (có ảnh)",
+            description = "Admin thêm xe mới vào hệ thống, có thể upload ảnh kèm theo",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(implementation = CreateVehicleRequest.class)
+                    )
+            ),
             responses = {
                     @ApiResponse(responseCode = "200", description = "Thêm thành công",
                             content = @Content(schema = @Schema(implementation = VehicleDto.class))),
                     @ApiResponse(responseCode = "400", description = "Tham số không hợp lệ")
             }
     )
-    @PostMapping
-    public VehicleDto createVehicle(@RequestBody CreateVehicleRequest request) {
+    @PostMapping(consumes = {"multipart/form-data"})
+    public VehicleDto createVehicle(@ModelAttribute CreateVehicleRequest request) {
         return vehicleAdminService.createVehicle(request);
     }
 
@@ -63,17 +70,24 @@ public class VehicleAdminController {
     }
 
     @Operation(
-            summary = "Cập nhật thông tin xe",
-            description = "Admin cập nhật thông tin xe: biển số, loại, tình trạng...",
+            summary = "Cập nhật thông tin xe (có thể đổi ảnh)",
+            description = "Admin cập nhật thông tin xe: biển số, loại, tình trạng, ảnh...",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "multipart/form-data",
+                            schema = @Schema(implementation = UpdateVehicleRequest.class)
+                    )
+            ),
             responses = {
                     @ApiResponse(responseCode = "200", description = "Cập nhật thành công"),
                     @ApiResponse(responseCode = "404", description = "Không tìm thấy xe")
             }
     )
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = {"multipart/form-data"})
     public VehicleDto updateVehicle(
             @PathVariable Long id,
-            @RequestBody UpdateVehicleRequest request
+            @ModelAttribute UpdateVehicleRequest request
     ) {
         return vehicleAdminService.updateVehicle(id, request);
     }
