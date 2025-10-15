@@ -11,6 +11,7 @@ import com.webserver.evrentalsystem.repository.StationRepository;
 import com.webserver.evrentalsystem.repository.VehicleRepository;
 import com.webserver.evrentalsystem.service.admin.VehicleAdminService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
+import com.webserver.evrentalsystem.utils.FileStorageUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,15 @@ public class VehicleAdminServiceImpl implements VehicleAdminService {
         vehicle.setStatus(status);
         vehicle.setPricePerHour(request.getPricePerHour());
         vehicle.setStation(station);
+
+        if (request.getImage() != null) {
+            try {
+                String vehicleUrl = FileStorageUtils.saveFile(request.getImage());
+                vehicle.setImageUrl(vehicleUrl);
+            } catch (Exception e) {
+                throw new RuntimeException("Lỗi khi lưu file", e);
+            }
+        }
 
         return vehicleMapper.toVehicleDto(vehicleRepository.save(vehicle));
     }
@@ -138,6 +148,15 @@ public class VehicleAdminServiceImpl implements VehicleAdminService {
             Station station = stationRepository.findById(request.getStationId())
                     .orElseThrow(() -> new InvalidateParamsException("Không tìm thấy trạm với id = " + request.getStationId()));
             vehicle.setStation(station);
+        }
+
+        if (request.getImage() != null) {
+            try {
+                String vehicleUrl = FileStorageUtils.saveFile(request.getImage());
+                vehicle.setImageUrl(vehicleUrl);
+            } catch (Exception e) {
+                throw new RuntimeException("Lỗi khi lưu file", e);
+            }
         }
 
         return vehicleMapper.toVehicleDto(vehicleRepository.save(vehicle));

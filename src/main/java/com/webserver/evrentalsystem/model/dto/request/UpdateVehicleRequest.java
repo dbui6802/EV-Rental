@@ -2,6 +2,7 @@ package com.webserver.evrentalsystem.model.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 
@@ -38,4 +39,7 @@ public class UpdateVehicleRequest {
 
     @Schema(description = "ID trạm", example = "2")
     private Long stationId;
+
+    @Schema(description = "Ảnh xe")
+    private MultipartFile image;
 }

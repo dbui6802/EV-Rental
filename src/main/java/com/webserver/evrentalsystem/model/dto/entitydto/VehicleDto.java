@@ -41,4 +41,7 @@ public class VehicleDto {
 
     @Schema(description = "Trạm mà xe đang ở")
     private StationDto station;
+
+    @Schema(description = "Đường dẫn ảnh xe")
+    private String imageUrl;
 }

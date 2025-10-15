@@ -9,5 +9,6 @@ import org.mapstruct.Mapping;
 public interface VehicleMapper {
     @Mapping(source = "type.value", target = "type")       // enum VehicleType -> string
     @Mapping(source = "status.value", target = "status")   // enum VehicleStatus -> string
+    @Mapping(source = "imageUrl", target = "imageUrl")
     VehicleDto toVehicleDto(Vehicle vehicle);
 }

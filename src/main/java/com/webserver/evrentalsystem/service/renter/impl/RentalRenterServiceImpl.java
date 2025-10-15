@@ -1,10 +1,14 @@
 package com.webserver.evrentalsystem.service.renter.impl;
 
 import com.webserver.evrentalsystem.entity.Rental;
+import com.webserver.evrentalsystem.entity.RentalCheck;
 import com.webserver.evrentalsystem.entity.RentalStatus;
 import com.webserver.evrentalsystem.entity.User;
+import com.webserver.evrentalsystem.model.dto.entitydto.RentalCheckDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalDto;
+import com.webserver.evrentalsystem.model.mapping.RentalCheckMapper;
 import com.webserver.evrentalsystem.model.mapping.RentalMapper;
+import com.webserver.evrentalsystem.repository.RentalCheckRepository;
 import com.webserver.evrentalsystem.repository.RentalRepository;
 import com.webserver.evrentalsystem.service.renter.RentalRenterService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
@@ -29,7 +33,13 @@ public class RentalRenterServiceImpl implements RentalRenterService {
     private RentalRepository rentalRepository;
 
     @Autowired
+    private RentalCheckRepository rentalCheckRepository;
+
+    @Autowired
     private RentalMapper rentalMapper;
+
+    @Autowired
+    private RentalCheckMapper rentalCheckMapper;
 
     @Override
     public List<RentalDto> getAllRentalsOfRenter(String status, String fromDate, String toDate) {
@@ -59,5 +69,12 @@ public class RentalRenterServiceImpl implements RentalRenterService {
         }
 
         return rentals.stream().map(rentalMapper::toRentalDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<RentalCheckDto> getRentalChecks(Long rentalId) {
+        userValidation.validateRenter();
+        List<RentalCheck> rentalChecks = rentalCheckRepository.findByRentalId(rentalId);
+        return rentalChecks.stream().map(rentalCheckMapper::toRentalCheckDto).collect(Collectors.toList());
     }
 }

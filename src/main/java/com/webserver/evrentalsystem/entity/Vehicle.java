@@ -47,4 +47,7 @@ public class Vehicle {
     @ManyToOne
     @JoinColumn(name = "station_id", nullable = false)
     private Station station;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 }
