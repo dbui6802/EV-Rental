@@ -1,9 +1,13 @@
 package com.webserver.evrentalsystem.service.staff.impl;
 
+import com.webserver.evrentalsystem.entity.Role;
 import com.webserver.evrentalsystem.entity.User;
 import com.webserver.evrentalsystem.model.dto.entitydto.DocumentDto;
+import com.webserver.evrentalsystem.model.dto.entitydto.UserDto;
 import com.webserver.evrentalsystem.model.mapping.DocumentMapper;
+import com.webserver.evrentalsystem.model.mapping.UserMapper;
 import com.webserver.evrentalsystem.repository.DocumentRepository;
+import com.webserver.evrentalsystem.repository.UserRepository;
 import com.webserver.evrentalsystem.service.staff.RenterDocumentStaffService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import jakarta.transaction.Transactional;
@@ -25,6 +29,22 @@ public class RenterDocumentStaffServiceImpl implements RenterDocumentStaffServic
 
     @Autowired
     private UserValidation userValidation;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Override
+    public List<UserDto> getAllUsers(String phone) {
+        userValidation.validateStaff();
+        return userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.RENTER)
+                .filter(u -> (phone == null || u.getPhone().contains(phone)))
+                .map(userMapper::toUserDto)
+                .collect(Collectors.toList());
+    }
 
     @Override
     public List<DocumentDto> getDocumentsByRenterId(Long renterId) {

@@ -39,9 +39,13 @@ public class VehicleStaffServiceImpl implements VehicleStaffService {
 
     @Override
     public List<VehicleDto> getAllVehicles(String status, String plateNumber) {
-        userValidation.validateStaff();
+        User staff = userValidation.validateStaff();
+        Station station = staffStationRepository.findAllByStaffId(staff.getId()).stream()
+                .findFirst()
+                .orElseThrow(() -> new InvalidateParamsException("Nhân viên chưa được phân công trạm"))
+                .getStation();
 
-        List<Vehicle> vehicles = vehicleRepository.findAll();
+        List<Vehicle> vehicles = vehicleRepository.findByStationId(station.getId());
 
         if (status != null) {
             VehicleStatus s = VehicleStatus.fromValue(status);
