@@ -1,9 +1,8 @@
 package com.webserver.evrentalsystem.service.renter.impl;
 
-import com.webserver.evrentalsystem.entity.Rental;
-import com.webserver.evrentalsystem.entity.RentalCheck;
-import com.webserver.evrentalsystem.entity.RentalStatus;
-import com.webserver.evrentalsystem.entity.User;
+import com.webserver.evrentalsystem.entity.*;
+import com.webserver.evrentalsystem.exception.ConflictException;
+import com.webserver.evrentalsystem.exception.NotFoundException;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalCheckDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalDto;
 import com.webserver.evrentalsystem.model.mapping.RentalCheckMapper;
@@ -16,6 +15,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -76,5 +76,18 @@ public class RentalRenterServiceImpl implements RentalRenterService {
         userValidation.validateRenter();
         List<RentalCheck> rentalChecks = rentalCheckRepository.findByRentalId(rentalId);
         return rentalChecks.stream().map(rentalCheckMapper::toRentalCheckDto).collect(Collectors.toList());
+    }
+
+    @Override
+    public void confirmInUse(Long rentalId) {
+        Rental rental = rentalRepository.findById(rentalId).orElse(null);
+        if (rental == null) {
+            throw new NotFoundException("Lượt thuê (rental) không tồn tại");
+        }
+        if (rental.getStatus() != RentalStatus.WAIT_CONFIRM) {
+            throw new ConflictException("Xe chưa được nhân viên xác nhận bàn giao");
+        }
+        rental.setStatus(RentalStatus.IN_USE);
+        rentalRepository.save(rental);
     }
 }
