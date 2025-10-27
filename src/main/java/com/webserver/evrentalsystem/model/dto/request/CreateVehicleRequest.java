@@ -1,7 +1,9 @@
 package com.webserver.evrentalsystem.model.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Positive;
 import lombok.*;
+import org.hibernate.validator.constraints.Range;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
@@ -42,4 +44,20 @@ public class CreateVehicleRequest {
 
     @Schema(description = "Ảnh xe")
     private MultipartFile image;
+
+    @Schema(description = "Loại pin", example = "Lithium")
+    private String batteryType;
+
+    @Range(min = 0, max = 100, message = "Phần trăm pin không hợp lệ. Vui lòng nhập giá trị từ 0 đến 100")
+    @Schema(description = "Phần trăm pin", example = "85")
+    private Integer batteryLevel;
+
+    @Positive(message = "Odometer vui lòng nhập giá trị >= 0")
+    @Schema(description = "Odometer (km)", example = "100000")
+    private Integer odo;
+
+    @Positive(message = "Số chỗ ngồi vui lòng nhập giá trị >= 0")
+    @Schema(description = "Số chỗ ngồi", example = "5")
+    private Integer numberSeat;
+
 }
