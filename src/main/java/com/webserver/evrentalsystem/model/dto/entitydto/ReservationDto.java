@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -69,4 +70,8 @@ public class ReservationDto {
             example = "2025-09-21T09:30:00Z"
     )
     private LocalDateTime createdAt;
+
+    @Schema(description = "Số tiền bảo hiểm nếu có", example = "200")
+    private BigDecimal insurance;
+
 }
