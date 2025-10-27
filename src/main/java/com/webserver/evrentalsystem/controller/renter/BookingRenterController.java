@@ -1,7 +1,6 @@
 package com.webserver.evrentalsystem.controller.renter;
 
 import com.webserver.evrentalsystem.entity.ReservationStatus;
-import com.webserver.evrentalsystem.entity.VehicleType;
 import com.webserver.evrentalsystem.model.dto.entitydto.ReservationDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.StationDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.VehicleDto;
