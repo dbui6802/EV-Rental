@@ -17,5 +17,5 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>,
     @Query("SELECT r FROM Reservation r WHERE r.id = :id AND r.renter.id = :renterId")
     Reservation findByIdAndRenterId(Long id, Long renterId);
 
-    List<Reservation> findAllByStatusAndReservedEndTimeBefore(ReservationStatus status, LocalDateTime time);
+    List<Reservation> findAllByStatusAndCreatedAtBefore(ReservationStatus status, LocalDateTime time);
 }

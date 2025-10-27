@@ -464,50 +464,112 @@ public class RentalStaffServiceImpl implements RentalStaffService {
     @Override
     public BillResponse calculateBill(Long rentalId, BillRequest request) {
         userValidation.validateStaff();
-        Rental rental = rentalRepository.findById(rentalId).orElse(null);
-        if (rental == null) {
-            throw new NotFoundException("Rental không tồn tại");
-        }
+
+        Rental rental = rentalRepository.findById(rentalId)
+                .orElseThrow(() -> new NotFoundException("Rental không tồn tại"));
         if (rental.getStatus() != RentalStatus.WAITING_FOR_PAYMENT) {
             throw new ConflictException("Chỉ có thể tính bill cho rental đang ở trạng thái WAITING_FOR_PAYMENT");
         }
 
         Vehicle vehicle = rental.getVehicle();
+        BigDecimal pricePerHour = vehicle.getPricePerHour();
 
-        // Thời gian thuê
         LocalDateTime start = rental.getStartTime();
-        LocalDateTime end = request.getReturnTime();
-        if (end.isBefore(start)) {
+        LocalDateTime expectedEnd = rental.getEndTime();
+        LocalDateTime actualEnd = request.getReturnTime();
+        if (actualEnd.isBefore(start)) {
             throw new InvalidateParamsException("Thời gian trả xe không hợp lệ");
         }
 
-        long hours = Duration.between(start, end).toHours();
-        if (hours == 0) hours = 1; // tối thiểu 1h
 
-        BigDecimal insurance = rental.getInsurance();
-        BigDecimal rentalCost = vehicle.getPricePerHour().multiply(BigDecimal.valueOf(hours));
+        long bookedHours = Duration.between(start, expectedEnd).toHours();
+        long usedHours = Duration.between(start, actualEnd).toHours();
+        if (Duration.between(start, actualEnd).toMinutes() % 60 != 0) {
+            usedHours++;
+        }
 
-        // Tổng violation
+
+        BigDecimal rentalCost = calculateRentalPrice(usedHours, pricePerHour);
+        BigDecimal totalBill = rentalCost;
+
+
+        if (actualEnd.isBefore(expectedEnd)) {
+            long remainingHours = bookedHours - usedHours;
+            if (remainingHours > 0) {
+                BigDecimal remainingCost = calculateRentalPrice(remainingHours, pricePerHour);
+                BigDecimal refund = (remainingHours > 24)
+                        ? remainingCost.multiply(BigDecimal.valueOf(0.8))
+                        : remainingCost;
+                totalBill = totalBill.subtract(refund);
+            }
+        }
+
+
+        if (actualEnd.isAfter(expectedEnd)) {
+            long lateMinutes = Duration.between(expectedEnd, actualEnd).toMinutes();
+            if (lateMinutes > 10) {
+                long lateHours = (long) Math.ceil(lateMinutes / 60.0);
+                BigDecimal lateFee = calculateRentalPrice(lateHours, pricePerHour);
+                totalBill = totalBill.add(lateFee);
+            }
+        }
+
+
         List<Violation> violations = violationRepository.findByRentalId(rentalId);
-        BigDecimal violationCost = violations.stream()
+        BigDecimal violationFee = violations.stream()
                 .map(v -> v.getFineAmount() != null ? v.getFineAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        totalBill = totalBill.add(violationFee);
 
-        // Tổng bill
-        BigDecimal totalBill = rentalCost.add(violationCost).subtract(insurance);
 
-        // Cập nhật thời gian trả xe, tổng tiền thuê
-        rental.setEndTime(end);
-        rental.setTotalCost(rentalCost);
+        BigDecimal insurance = rental.getInsurance() != null ? rental.getInsurance() : BigDecimal.ZERO;
+        totalBill = totalBill.add(insurance);
+
+
+        if (totalBill.compareTo(BigDecimal.ZERO) < 0) totalBill = BigDecimal.ZERO;
+
+
+        rental.setEndTime(actualEnd);
+        rental.setTotalCost(totalBill);
         rentalRepository.save(rental);
 
         return BillResponse.builder()
                 .rental(rentalMapper.toRentalDto(rental))
                 .rentalCost(rentalCost)
-                .violationCost(violationCost)
+                .violationCost(violationFee)
                 .insurance(insurance)
                 .totalBill(totalBill)
                 .build();
+    }
+
+    private BigDecimal calculateRentalPrice(long hours, BigDecimal pricePerHour) {
+        BigDecimal total = BigDecimal.ZERO;
+        int remaining = (int) hours;
+
+        while (remaining > 0) {
+            if (remaining >= 24) {
+                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(24))
+                        .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.125"))));
+                remaining -= 24;
+            } else if (remaining >= 12) {
+                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(12))
+                        .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.10"))));
+                remaining -= 12;
+            } else if (remaining >= 8) {
+                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(8))
+                        .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.075"))));
+                remaining -= 8;
+            } else if (remaining >= 4) {
+                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(4))
+                        .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.05"))));
+                remaining -= 4;
+            } else {
+                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(remaining)));
+                remaining = 0;
+            }
+        }
+
+        return total;
     }
 
     @Override

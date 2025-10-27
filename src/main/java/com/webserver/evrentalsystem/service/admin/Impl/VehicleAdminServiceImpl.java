@@ -66,6 +66,10 @@ public class VehicleAdminServiceImpl implements VehicleAdminService {
         vehicle.setRangePerFullCharge(request.getRangePerFullCharge());
         vehicle.setStatus(status);
         vehicle.setPricePerHour(request.getPricePerHour());
+        vehicle.setBatteryType(request.getBatteryType());
+        vehicle.setBatteryLevel(request.getBatteryLevel());
+        vehicle.setOdo(request.getOdo());
+        vehicle.setNumberSeat(request.getNumberSeat());
         vehicle.setStation(station);
 
         if (request.getImage() != null) {
@@ -143,6 +147,10 @@ public class VehicleAdminServiceImpl implements VehicleAdminService {
         }
 
         if (request.getPricePerHour() != null) vehicle.setPricePerHour(request.getPricePerHour());
+        if (request.getBatteryType() != null) vehicle.setBatteryType(request.getBatteryType());
+        if (request.getBatteryLevel() != null) vehicle.setBatteryLevel(request.getBatteryLevel());
+        if (request.getOdo() != null) vehicle.setOdo(request.getOdo());
+        if (request.getNumberSeat() != null) vehicle.setOdo(request.getNumberSeat());
 
         if (request.getStationId() != null) {
             Station station = stationRepository.findById(request.getStationId())
