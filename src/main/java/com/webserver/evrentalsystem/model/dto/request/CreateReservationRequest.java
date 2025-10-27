@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Schema(description = "Thông tin tạo đặt chỗ")
@@ -34,4 +35,8 @@ public class CreateReservationRequest {
             example = "2025-09-22T18:00:00"
     )
     private LocalDateTime reservedEndTime;
+
+    @Schema(description = "Số tiền bảo hiểm nếu có", example = "200")
+    private BigDecimal insurance;
+
 }
