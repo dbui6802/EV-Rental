@@ -50,4 +50,17 @@ public class Vehicle {
 
     @Column(name = "image_url")
     private String imageUrl;
+
+    @Column(name = "battery_type", nullable = false)
+    private String batteryType;
+
+    @Column(name = "battery_Level", nullable = false)
+    private Integer batteryLevel;
+
+    @Column(name = "odo", nullable = false)
+    private Integer odo;
+
+    @Column(name = "number_seat", nullable = false)
+    private Integer numberSeat;
+
 }

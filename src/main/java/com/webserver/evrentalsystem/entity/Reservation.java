@@ -4,6 +4,7 @@ import com.webserver.evrentalsystem.jpaconverter.ReservationStatusJpaConverter;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -44,4 +45,8 @@ public class Reservation {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "insurance")
+    private BigDecimal insurance;
+
 }

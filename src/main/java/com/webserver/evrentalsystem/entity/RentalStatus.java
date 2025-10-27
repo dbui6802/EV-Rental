@@ -5,6 +5,7 @@ import lombok.Getter;
 @Getter
 public enum RentalStatus {
     BOOKED("booked"),
+    WAIT_CONFIRM("wait_confirm"),
     IN_USE("in_use"),
     WAITING_FOR_PAYMENT("waiting_for_payment"),
     RETURNED("returned"),
