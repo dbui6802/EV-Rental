@@ -13,5 +13,6 @@ public class BillResponse {
     private RentalDto rental;
     private BigDecimal rentalCost;
     private BigDecimal violationCost;
+    private BigDecimal insurance;
     private BigDecimal totalBill;
 }
