@@ -1,15 +1,16 @@
 package com.webserver.evrentalsystem.controller.renter;
 
-import com.webserver.evrentalsystem.entity.RentalStatus;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalCheckDto;
 import com.webserver.evrentalsystem.model.dto.entitydto.RentalDto;
 import com.webserver.evrentalsystem.service.renter.RentalRenterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -58,5 +59,24 @@ public class RentalRenterController {
             @Parameter(description = "ID lượt thuê", example = "101")
             @PathVariable Long id) {
         return rentalRenterService.getRentalChecks(id);
+    }
+
+    @Operation(
+            summary = "Xác nhận đã nhận xe",
+            description = "Người thuê xác nhận đã nhận xe sau khi nhân viên xác nhận đã giao xe",
+            parameters = {
+                    @Parameter(name = "id", description = "ID lượt thuê", required = true)
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Hủy thành công"),
+                    @ApiResponse(responseCode = "404", description = "Không tìm thấy lượt thuê")
+            }
+    )
+    @PatchMapping("/{id}/confirm")
+    public ResponseEntity<Void> cancelReservation(
+            @PathVariable Long id
+    ) {
+        rentalRenterService.confirmInUse(id);
+        return ResponseEntity.ok().build();
     }
 }
