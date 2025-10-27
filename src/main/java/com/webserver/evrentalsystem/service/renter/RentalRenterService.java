@@ -8,4 +8,5 @@ import java.util.List;
 public interface RentalRenterService {
     List<RentalDto> getAllRentalsOfRenter(String status, String fromDate, String toDate);
     List<RentalCheckDto> getRentalChecks(Long rentalId);
+    void confirmInUse(Long rentalId);
 }

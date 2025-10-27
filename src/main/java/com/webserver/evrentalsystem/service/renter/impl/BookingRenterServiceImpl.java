@@ -129,6 +129,7 @@ public class BookingRenterServiceImpl implements BookingRenterService {
         reservation.setReservedEndTime(reservedEndTime);
         reservation.setStatus(ReservationStatus.PENDING);
         reservation.setCreatedAt(LocalDateTime.now());
+        reservation.setInsurance(request.getInsurance());
         Reservation saved = reservationRepository.save(reservation);
 
         return reservationMapper.toReservationDto(saved);
