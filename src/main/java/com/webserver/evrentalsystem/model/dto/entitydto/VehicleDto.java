@@ -44,4 +44,17 @@ public class VehicleDto {
 
     @Schema(description = "Đường dẫn ảnh xe")
     private String imageUrl;
+
+    @Schema(description = "Loại pin")
+    private String batteryType;
+
+    @Schema(description = "Phần trăm pin")
+    private Integer batteryLevel;
+
+    @Schema(description = "Odometer (km)")
+    private Integer odo;
+
+    @Schema(description = "Số chỗ ngồi")
+    private Integer numberSeat;
+
 }
