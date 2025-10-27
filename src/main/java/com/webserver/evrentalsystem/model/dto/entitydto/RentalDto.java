@@ -46,6 +46,12 @@ public class RentalDto {
     @Schema(description = "Tổng chi phí", example = "350000")
     private BigDecimal totalCost;
 
+    @Schema(description = "Tổng phí thuê xe theo giờ", example = "200")
+    private BigDecimal rentalCost;
+
+    @Schema(description = "Số tiền bảo hiểm nếu có", example = "200")
+    private BigDecimal insurance;
+
     @Schema(description = "Loại thuê (booking/walk-in)", example = "booking")
     private String rentalType;
 
@@ -60,5 +66,18 @@ public class RentalDto {
 
     @Schema(description = "Ngày tạo record")
     private LocalDateTime createdAt;
+
+    @Schema(description = "Phần trăm pin lúc bàn giao xe")
+    private Integer batteryLevelStart;
+
+    @Schema(description = "Phần trăm pin lúc nhận xe trả về")
+    private Integer batteryLevelEnd;
+
+    @Schema(description = "Odometer (km) lúc bàn giao xe")
+    private Integer odoStart;
+
+    @Schema(description = "Odometer (km) lúc nhận xe trả về")
+    private Integer odoEnd;
+
 }
 
