@@ -34,6 +34,10 @@ public class RentalCheckInRequest {
     @Schema(description = "Thời gian kết thúc thuê dự kiến", example = "2024-08-01T12:00:00")
     private LocalDateTime endTime;
 
-    @Schema(description = "Số tiền đặt cọc (nếu có)", example = "150")
-    private BigDecimal depositAmount;
+    @Schema(description = "Số tiền bảo hiểm nếu có", example = "200")
+    private BigDecimal insurance;
+
+    @Schema(description = "Khách high risk hay không ? Mặc định là False (Khách bình thường)", example = "true")
+    private Boolean highRisk = Boolean.FALSE;
+
 }
