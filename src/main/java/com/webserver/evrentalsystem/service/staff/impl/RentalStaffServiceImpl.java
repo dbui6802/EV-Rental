@@ -21,11 +21,13 @@ import com.webserver.evrentalsystem.specification.ReservationSpecification;
 import com.webserver.evrentalsystem.utils.FileStorageUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -66,6 +68,12 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
     @Autowired
     private ViolationMapper violationMapper;
+
+    @Value("${percent.deposit}")
+    private BigDecimal percentDeposit;
+
+    @Value("${min.deposit.of.high.risk}")
+    private BigDecimal minDepositOfHighRisk;
 
     public List<ReservationDto> getReservations(ReservationFilterRequest filter) {
         List<Reservation> reservations = reservationRepository.findAll(
@@ -122,7 +130,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         Long stationId = request.getStationId();
         LocalDateTime startTime = request.getStartTime();
         LocalDateTime endTime = request.getEndTime();
-        BigDecimal depositAmount = request.getDepositAmount();
+        Boolean highRisk = request.getHighRisk();
 
         User renter = userRepository.findById(renterId).orElse(null);
         if (renter == null) {
@@ -135,10 +143,6 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
         if (reservationId != null && vehicleId != null) {
             throw new InvalidateParamsException("Chỉ được cung cấp reservationId hoặc vehicleId");
-        }
-
-        if (depositAmount != null && depositAmount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new InvalidateParamsException("Tiền cọc phải lớn hơn hoặc bằng 0");
         }
 
         Vehicle vehicle;
@@ -192,17 +196,32 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         if (finalEndTime.isBefore(finalStartTime) || finalEndTime.isEqual(finalStartTime)) {
             throw new InvalidateParamsException("Thời gian kết thúc phải sau thời gian bắt đầu");
         }
-        long hours = java.time.Duration.between(finalStartTime, finalEndTime).toHours();
+        long hours = Duration.between(finalStartTime, finalEndTime).toHours();
         if (hours == 0) {
             hours = 1; // Thu tối thiểu 1 giờ
-        } else if (java.time.Duration.between(finalStartTime, finalEndTime).toMinutes() % 60 != 0) {
+        } else if (Duration.between(finalStartTime, finalEndTime).toMinutes() % 60 != 0) {
             hours += 1; // Làm tròn lên nếu có phút lẻ
         }
+
+        // Tính số tiền cọc
+        BigDecimal deposit;
+        BigDecimal insurance = request.getInsurance();
         BigDecimal rentalCost = vehicle.getPricePerHour().multiply(BigDecimal.valueOf(hours));
-        // Kiểm tra tiền cọc
-        BigDecimal minDeposit = rentalCost.multiply(BigDecimal.valueOf(0.3)); // Tiền cọc tối thiểu 30% tổng tiền thuê
-        if (depositAmount != null && depositAmount.compareTo(minDeposit) < 0) {
-            throw new ConflictException("Tiền cọc phải lớn hơn hoặc bằng 30% tổng tiền thuê là " + minDeposit);
+        BigDecimal totalCost = rentalCost.add(insurance);
+        BigDecimal minDeposit = totalCost.multiply(percentDeposit); // Tiền cọc tối thiểu 30% tổng tiền thuê
+
+        if (Boolean.FALSE.equals(highRisk)) {
+            // Nếu khách hình thường thì chỉ cần cọc nhỏ nhật
+            deposit = minDeposit;
+        } else {
+            // Nếu khách high risk
+            if (minDeposit.compareTo(minDepositOfHighRisk) < 0) {
+                // Nếu số tiền cọc nhỏ nhất < số tiền cọc tối thiếu => Lấy số tiền cọc tối thiểu
+                deposit = minDepositOfHighRisk;
+            } else {
+                // Nếu số tiền cọc nhỏ nhất >= số tiền cọc tối thiếu => Lấy số tiền cọc nhỏ nhất  + số tiền cọc tối thiểu
+                deposit = minDeposit.add(minDepositOfHighRisk);
+            }
         }
 
         Rental rental = new Rental();
@@ -212,9 +231,11 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         rental.setStaffPickup(staff);
         rental.setStartTime(finalStartTime);
         rental.setEndTime(finalEndTime);
-        rental.setTotalCost(rentalCost);
+        rental.setTotalCost(totalCost);
+        rental.setRentalCost(rentalCost);
+        rental.setInsurance(insurance);
         rental.setRentalType(rentalType);
-        rental.setDepositAmount(depositAmount != null ? depositAmount : BigDecimal.ZERO);
+        rental.setDepositAmount(deposit);
         rental.setDepositStatus(DepositStatus.PENDING);
         rental.setStatus(RentalStatus.BOOKED);
         rental.setCreatedAt(LocalDateTime.now());
@@ -292,13 +313,17 @@ public class RentalStaffServiceImpl implements RentalStaffService {
             throw new ConflictException("Chỉ có thể xác nhận giao xe cho khách khi tiền cọc đã được thanh toán");
         }
 
-        // Cập nhật trạng thái xe thành RENTED
+        // Cập nhật trạng thái xe thành RENTED, phần trăm pin xe hiện tại
         Vehicle vehicle = rental.getVehicle();
+        vehicle.setOdo(request.getOdo());
+        vehicle.setBatteryLevel(request.getBatteryLevel());
         vehicle.setStatus(VehicleStatus.RENTED);
         vehicleRepository.save(vehicle);
 
-        // Cập nhật trạng thái rental thành IN_USE
-        rental.setStatus(RentalStatus.IN_USE);
+        // Cập nhật trạng thái rental thành WAIT_CONFIRM
+        rental.setOdoStart(request.getOdo());
+        rental.setBatteryLevelStart(request.getBatteryLevel());
+        rental.setStatus(RentalStatus.WAIT_CONFIRM);
         rentalRepository.save(rental);
 
         // Lưu biên bản giao xe
@@ -362,10 +387,14 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
         // Cập nhật trạng thái xe thành RENTED
         Vehicle vehicle = rental.getVehicle();
+        vehicle.setOdo(request.getOdo());
+        vehicle.setBatteryLevel(request.getBatteryLevel());
         vehicle.setStatus(VehicleStatus.AVAILABLE);
         vehicleRepository.save(vehicle);
 
         // Cập nhật trạng thái rental thành WAITING_FOR_PAYMENT
+        rental.setOdoEnd(request.getOdo());
+        rental.setBatteryLevelEnd(request.getBatteryLevel());
         rental.setStatus(RentalStatus.WAITING_FOR_PAYMENT);
         rental.setStaffReturn(staff);
         rentalRepository.save(rental);
@@ -403,8 +432,10 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         if (rental == null) {
             throw new NotFoundException("Lượt thuê (rental) không tồn tại");
         }
-        if (rental.getStatus() != RentalStatus.IN_USE && rental.getStatus() != RentalStatus.WAITING_FOR_PAYMENT) {
-            throw new ConflictException("Chỉ có thể thêm chi phí phát sinh cho lượt thuê ở trạng thái IN_USE hoặc WAITING_FOR_PAYMENT");
+        if (rental.getStatus() != RentalStatus.WAIT_CONFIRM
+                && rental.getStatus() != RentalStatus.IN_USE
+                && rental.getStatus() != RentalStatus.WAITING_FOR_PAYMENT) {
+            throw new ConflictException("Chỉ có thể thêm chi phí phát sinh cho lượt thuê ở trạng thái WAIT_CONFIRM, IN_USE hoặc WAITING_FOR_PAYMENT");
         }
 
         Violation violation = new Violation();
@@ -450,9 +481,10 @@ public class RentalStaffServiceImpl implements RentalStaffService {
             throw new InvalidateParamsException("Thời gian trả xe không hợp lệ");
         }
 
-        long hours = java.time.Duration.between(start, end).toHours();
+        long hours = Duration.between(start, end).toHours();
         if (hours == 0) hours = 1; // tối thiểu 1h
 
+        BigDecimal insurance = rental.getInsurance();
         BigDecimal rentalCost = vehicle.getPricePerHour().multiply(BigDecimal.valueOf(hours));
 
         // Tổng violation
@@ -462,7 +494,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Tổng bill
-        BigDecimal totalBill = rentalCost.add(violationCost);
+        BigDecimal totalBill = rentalCost.add(violationCost).subtract(insurance);
 
         // Cập nhật thời gian trả xe, tổng tiền thuê
         rental.setEndTime(end);
@@ -473,6 +505,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
                 .rental(rentalMapper.toRentalDto(rental))
                 .rentalCost(rentalCost)
                 .violationCost(violationCost)
+                .insurance(insurance)
                 .totalBill(totalBill)
                 .build();
     }
