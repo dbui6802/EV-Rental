@@ -489,7 +489,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         }
 
 
-        BigDecimal rentalCost = calculateRentalPrice(usedHours, pricePerHour);
+        BigDecimal rentalCost = calculateRentalPrice(bookedHours, pricePerHour);
         BigDecimal totalBill = rentalCost;
 
 
@@ -509,7 +509,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
             long lateMinutes = Duration.between(expectedEnd, actualEnd).toMinutes();
             if (lateMinutes > 10) {
                 long lateHours = (long) Math.ceil(lateMinutes / 60.0);
-                BigDecimal lateFee = calculateRentalPrice(lateHours, pricePerHour);
+                BigDecimal lateFee = pricePerHour.multiply(BigDecimal.valueOf(lateHours));
                 totalBill = totalBill.add(lateFee);
             }
         }

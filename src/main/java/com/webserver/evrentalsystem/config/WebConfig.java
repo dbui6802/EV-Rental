@@ -12,5 +12,9 @@ public class WebConfig implements WebMvcConfigurer {
         // Map /uploads/** ra thư mục uploads trong project
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:uploads/");
+
+        // Map /public/uploads/** ra thư mục public/uploads
+        registry.addResourceHandler("/public/uploads/**")
+                .addResourceLocations("file:public/uploads/");
     }
 }
