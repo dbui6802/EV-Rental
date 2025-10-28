@@ -507,7 +507,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
         if (actualEnd.isAfter(expectedEnd)) {
             long lateMinutes = Duration.between(expectedEnd, actualEnd).toMinutes();
-            if (lateMinutes > 10) { //
+            if (lateMinutes > 10) {
                 long lateHours = (long) Math.ceil(lateMinutes / 60.0);
                 BigDecimal lateFee = pricePerHour.multiply(BigDecimal.valueOf(lateHours));
                 totalBill = totalBill.add(lateFee);
