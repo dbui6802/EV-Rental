@@ -8,36 +8,42 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileStorageUtils {
 
     private static final Path UPLOAD_DIR = Paths.get("uploads");
+    private static final Path PUBLIC_UPLOAD_DIR = Paths.get("public", "uploads");
 
     public static String saveFile(MultipartFile file) throws IOException {
+        return saveToDirectory(file, UPLOAD_DIR, "/uploads/");
+    }
+
+    public static String savePublicFile(MultipartFile file) throws IOException {
+        return saveToDirectory(file, PUBLIC_UPLOAD_DIR, "/public/uploads/");
+    }
+
+    private static String saveToDirectory(MultipartFile file, Path directory, String urlPrefix) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File không được rỗng");
         }
 
-        // Tạo thư mục uploads nếu chưa tồn tại
-        if (!Files.exists(UPLOAD_DIR)) {
-            Files.createDirectories(UPLOAD_DIR);
+        // Tạo thư mục nếu chưa tồn tại
+        if (!Files.exists(directory)) {
+            Files.createDirectories(directory);
         }
 
-        // Lấy tên file gốc
+        // Lấy phần mở rộng
         String originalFilename = file.getOriginalFilename();
         String extension = "";
-
         if (originalFilename != null && originalFilename.contains(".")) {
             extension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
 
-        // Sinh tên file random
+        // Sinh tên file ngẫu nhiên
         String filename = UUID.randomUUID() + extension;
 
-        // Đường dẫn lưu file
-        Path filePath = UPLOAD_DIR.resolve(filename);
-
         // Ghi file
+        Path filePath = directory.resolve(filename);
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-        // Trả về URL (giả sử bạn serve file từ /uploads/)
-        return "/uploads/" + filename;
+        // Trả về URL tương ứng
+        return urlPrefix + filename;
     }
 }
 
