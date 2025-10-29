@@ -206,7 +206,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         // Tính số tiền cọc
         BigDecimal deposit;
         BigDecimal insurance = request.getInsurance();
-        BigDecimal rentalCost = vehicle.getPricePerHour().multiply(BigDecimal.valueOf(hours));
+        BigDecimal rentalCost = calculateRentalPrice(hours, vehicle.getPricePerHour());
         BigDecimal totalCost = rentalCost.add(insurance);
         BigDecimal minDeposit = totalCost.multiply(percentDeposit); // Tiền cọc tối thiểu 30% tổng tiền thuê
 
