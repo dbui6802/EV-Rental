@@ -129,7 +129,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private boolean isResourceUrl(String url) {
         boolean isResourceUrl = false;
         List<String> resourceRequests = List.of(
-                "/auth/", "/public/"
+                "/auth/", "/public/", "/uploads/"
         );
 
         if (url.contains("/auth/sign-out")) {
