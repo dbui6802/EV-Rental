@@ -206,7 +206,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         // Tính số tiền cọc
         BigDecimal deposit;
         BigDecimal insurance = request.getInsurance();
-        BigDecimal rentalCost = vehicle.getPricePerHour().multiply(BigDecimal.valueOf(hours));
+        BigDecimal rentalCost = calculateRentalPrice(hours, vehicle.getPricePerHour());
         BigDecimal totalCost = rentalCost.add(insurance);
         BigDecimal minDeposit = totalCost.multiply(percentDeposit); // Tiền cọc tối thiểu 30% tổng tiền thuê
 
@@ -490,18 +490,21 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
 
         BigDecimal rentalCost = calculateRentalPrice(bookedHours, pricePerHour);
+        BigDecimal usedCost = calculateRentalPrice(usedHours, pricePerHour);
         BigDecimal totalBill = rentalCost;
 
 
         if (actualEnd.isBefore(expectedEnd)) {
-            long remainingHours = bookedHours - usedHours;
-            if (remainingHours > 0) {
-                BigDecimal remainingCost = calculateRentalPrice(remainingHours, pricePerHour);
-                BigDecimal refund = (remainingHours > 24)
-                        ? remainingCost.multiply(BigDecimal.valueOf(0.8))
-                        : remainingCost;
-                totalBill = totalBill.subtract(refund);
+            BigDecimal refund = rentalCost.subtract(usedCost);
+            if (refund.compareTo(BigDecimal.ZERO) < 0) refund = BigDecimal.ZERO;
+
+            BigDecimal refundRate = BigDecimal.ONE;
+            if (bookedHours >= 24) {
+                refundRate = new BigDecimal("0.8");
             }
+
+            refund = refund.multiply(refundRate);
+            totalBill = totalBill.subtract(refund);
         }
 
 
