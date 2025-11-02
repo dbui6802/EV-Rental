@@ -497,6 +497,13 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         if (actualEnd.isBefore(expectedEnd)) {
             BigDecimal refund = rentalCost.subtract(usedCost);
             if (refund.compareTo(BigDecimal.ZERO) < 0) refund = BigDecimal.ZERO;
+
+            BigDecimal refundRate = BigDecimal.ONE;
+            if (bookedHours >= 24) {
+                refundRate = new BigDecimal("0.8");
+            }
+
+            refund = refund.multiply(refundRate);
             totalBill = totalBill.subtract(refund);
         }
 
