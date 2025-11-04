@@ -69,6 +69,9 @@ public class RentalStaffServiceImpl implements RentalStaffService {
     @Autowired
     private ViolationMapper violationMapper;
 
+    @Autowired
+    private StaffStationRepository staffStationRepository;
+
     @Value("${percent.deposit}")
     private BigDecimal percentDeposit;
 
@@ -356,6 +359,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         User staff = userValidation.validateStaff();
         Long rentalId = request.getRentalId();
         String conditionReport = request.getConditionReport();
+        StaffStation activeAssignment = staffStationRepository.findByStaffIdAndIsActiveTrue(staff.getId());
 
         if (photo == null || photo.isEmpty()) {
             throw new InvalidateParamsException("photo không được để trống");
@@ -385,7 +389,13 @@ public class RentalStaffServiceImpl implements RentalStaffService {
             throw new ConflictException("Chỉ có thể xác nhận trả xe khi lượt thuê ở trạng thái IN_USE");
         }
 
-        // Cập nhật trạng thái xe thành RENTED
+        if (activeAssignment == null) {
+            throw new NotFoundException("Nhân viên chưa được gán vào trạm nào đang hoạt động");
+        }
+
+        Station returnStation = activeAssignment.getStation();
+
+        // Cập nhật trạng thái xe thành AVAILABLE
         Vehicle vehicle = rental.getVehicle();
         vehicle.setOdo(request.getOdo());
         vehicle.setBatteryLevel(request.getBatteryLevel());
@@ -397,6 +407,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         rental.setBatteryLevelEnd(request.getBatteryLevel());
         rental.setStatus(RentalStatus.WAITING_FOR_PAYMENT);
         rental.setStaffReturn(staff);
+        rental.setStationReturn(returnStation);
         rentalRepository.save(rental);
 
         // Lưu biên bản giao xe
