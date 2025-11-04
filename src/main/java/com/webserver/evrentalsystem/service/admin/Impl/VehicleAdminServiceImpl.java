@@ -150,7 +150,7 @@ public class VehicleAdminServiceImpl implements VehicleAdminService {
         if (request.getBatteryType() != null) vehicle.setBatteryType(request.getBatteryType());
         if (request.getBatteryLevel() != null) vehicle.setBatteryLevel(request.getBatteryLevel());
         if (request.getOdo() != null) vehicle.setOdo(request.getOdo());
-        if (request.getNumberSeat() != null) vehicle.setOdo(request.getNumberSeat());
+        if (request.getNumberSeat() != null) vehicle.setNumberSeat(request.getNumberSeat());
 
         if (request.getStationId() != null) {
             Station station = stationRepository.findById(request.getStationId())

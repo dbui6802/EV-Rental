@@ -12,4 +12,6 @@ public interface StaffStationRepository extends JpaRepository<StaffStation, Long
 
     @Query("SELECT ss FROM StaffStation ss WHERE ss.staff.id = :staffId AND ss.isActive = true")
     List<StaffStation> findAllByStaffId(Long staffId);
+
+    StaffStation findByStaffIdAndIsActiveTrue(Long staffId);
 }
