@@ -1,6 +1,7 @@
 package com.webserver.evrentalsystem.service.admin.impl;
 
 import com.webserver.evrentalsystem.entity.*;
+import com.webserver.evrentalsystem.exception.ConflictException;
 import com.webserver.evrentalsystem.exception.InvalidateParamsException;
 import com.webserver.evrentalsystem.exception.NotFoundException;
 import com.webserver.evrentalsystem.model.dto.request.CreateVehicleRequest;
@@ -175,7 +176,13 @@ public class VehicleAdminServiceImpl implements VehicleAdminService {
         userValidation.validateAdmin();
         Vehicle vehicle = vehicleRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy xe với id = " + id));
-        vehicleRepository.delete(vehicle);
+
+        if (vehicle.getStatus() != VehicleStatus.AVAILABLE
+                && vehicle.getStatus() != VehicleStatus.MAINTENANCE) {
+            throw new ConflictException("Chỉ có thể xóa xe khi xe đang ở trạng thái AVAILABLE hoặc MAINTENANCE");
+        }
+        vehicle.setStatus(VehicleStatus.DELETED);
+        vehicleRepository.save(vehicle);
     }
 
     @Override

@@ -55,6 +55,10 @@ public class StaffStationAdminServiceImpl implements StaffStationAdminService {
             throw new InvalidateParamsException("User được chọn không phải là nhân viên (staff)");
         }
 
+        if (staff.getIsActive() == null || !staff.getIsActive()) {
+            throw new InvalidateParamsException("Không thể gán nhân viên đã bị vô hiệu hóa (inactive)");
+        }
+
         Station station = stationRepository.findById(request.getStationId())
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy station với id = " + request.getStationId()));
 

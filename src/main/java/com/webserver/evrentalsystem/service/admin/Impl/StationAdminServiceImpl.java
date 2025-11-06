@@ -2,13 +2,17 @@ package com.webserver.evrentalsystem.service.admin.impl;
 
 import com.webserver.evrentalsystem.entity.Station;
 import com.webserver.evrentalsystem.entity.StationStatus;
+import com.webserver.evrentalsystem.entity.VehicleStatus;
+import com.webserver.evrentalsystem.exception.ConflictException;
 import com.webserver.evrentalsystem.exception.InvalidateParamsException;
 import com.webserver.evrentalsystem.exception.NotFoundException;
 import com.webserver.evrentalsystem.model.dto.entitydto.StationDto;
 import com.webserver.evrentalsystem.model.dto.request.CreateStationRequest;
 import com.webserver.evrentalsystem.model.dto.request.UpdateStationRequest;
 import com.webserver.evrentalsystem.model.mapping.StationMapper;
+import com.webserver.evrentalsystem.repository.StaffStationRepository;
 import com.webserver.evrentalsystem.repository.StationRepository;
+import com.webserver.evrentalsystem.repository.VehicleRepository;
 import com.webserver.evrentalsystem.service.admin.StationAdminService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import jakarta.transaction.Transactional;
@@ -29,6 +33,12 @@ public class StationAdminServiceImpl implements StationAdminService {
 
     @Autowired
     private UserValidation userValidation;
+
+    @Autowired
+    private VehicleRepository vehicleRepository;
+
+    @Autowired
+    private StaffStationRepository staffStationRepository;
 
     @Override
     public StationDto createStation(CreateStationRequest request) {
@@ -91,6 +101,25 @@ public class StationAdminServiceImpl implements StationAdminService {
         userValidation.validateAdmin();
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm với id = " + id));
-        stationRepository.delete(station);
+
+        boolean hasActiveVehicles = vehicleRepository.existsByStationIdAndStatusIn(
+                id, List.of(VehicleStatus.RENTED, VehicleStatus.MAINTENANCE, VehicleStatus.RESERVED)
+        );
+        if (hasActiveVehicles) {
+            throw new ConflictException("Không thể xóa trạm vì có xe đang được thuê hoặc đang bảo trì.");
+        }
+
+        boolean hasVehicles = vehicleRepository.existsByStationId(id);
+        if (hasVehicles) {
+            throw new ConflictException("Không thể xóa trạm vì vẫn còn xe trực thuộc trạm.");
+        }
+
+        boolean hasActiveStaff = !staffStationRepository.findAllByStationId(id).isEmpty();
+        if (hasActiveStaff) {
+            throw new ConflictException("Không thể xóa trạm vì có nhân viên đang làm việc tại trạm.");
+        }
+
+        station.setStatus(StationStatus.DELETE);
+        stationRepository.save(station);
     }
 }

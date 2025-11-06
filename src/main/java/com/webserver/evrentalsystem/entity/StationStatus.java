@@ -6,7 +6,8 @@ import lombok.Getter;
 public enum StationStatus {
     ACTIVE("active"),
     INACTIVE("inactive"),
-    MAINTENANCE("maintenance");
+    MAINTENANCE("maintenance"),
+    DELETE("deleted");
 
     private final String value;
 

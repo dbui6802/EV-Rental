@@ -7,7 +7,8 @@ public enum VehicleStatus {
     RESERVED("reserved"),
     AVAILABLE("available"),
     RENTED("rented"),
-    MAINTENANCE("maintenance");
+    MAINTENANCE("maintenance"),
+    DELETED("deleted");
 
     private final String value;
 

@@ -18,4 +18,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>,
     Reservation findByIdAndRenterId(Long id, Long renterId);
 
     List<Reservation> findAllByStatusAndCreatedAtBefore(ReservationStatus status, LocalDateTime time);
+
+    boolean existsByRenterIdAndStatusNotIn(Long renterId, List<ReservationStatus> statuses);
 }

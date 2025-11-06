@@ -33,4 +33,7 @@ public class UserDto {
 
     @Schema(description = "Thời gian cập nhật gần nhất", example = "2023-10-05T15:30:00")
     private LocalDateTime updatedAt;
+
+    @Schema(description = "Trạng thái hoạt động của người dùng (true: hoạt động, false: đã vô hiệu hóa)", example = "true")
+    private Boolean isActive;
 }

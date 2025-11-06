@@ -10,4 +10,10 @@ import java.util.List;
 public interface ComplaintRepository extends JpaRepository<Complaint, Long> {
     @Query("SELECT c FROM Complaint c WHERE (:status IS NULL OR c.status = :status)")
     List<Complaint> findByStatus(ComplaintStatus status);
+
+    @Query("SELECT c FROM Complaint c WHERE c.renter.id = :renterId")
+    List<Complaint> findAllByRenterId(Long renterId);
+
+    @Query("SELECT c FROM Complaint c WHERE c.renter.id = :renterId ORDER BY c.createdAt DESC")
+    List<Complaint> findByRenterId(Long renterId);
 }

@@ -13,10 +13,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
 
 @RestController
 @RequestMapping("api/renter/complaint")
@@ -50,5 +50,43 @@ public class ComplaintRenterController {
             @Valid @RequestBody ComplaintRequest request
     ) {
         return complaintRenterService.createComplaint(request);
+    }
+
+    @Operation(
+            summary = "Xem danh sách khiếu nại của renter",
+            description = "Lấy tất cả khiếu nại do renter hiện tại gửi.",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Danh sách khiếu nại",
+                            content = @Content(schema = @Schema(implementation = ComplaintDto.class))
+                    ),
+                    @ApiResponse(responseCode = "401", description = "Không có quyền truy cập")
+            }
+    )
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<ComplaintDto> getComplaintsOfRenter() {
+        return complaintRenterService.getComplaintsOfRenter();
+    }
+
+    @Operation(
+            summary = "Xem chi tiết khiếu nại",
+            description = "Renter xem chi tiết khiếu nại của chính mình, bao gồm phản hồi từ admin (nếu có).",
+            responses = {
+                    @ApiResponse(
+                            responseCode = "200",
+                            description = "Chi tiết khiếu nại",
+                            content = @Content(schema = @Schema(implementation = ComplaintDto.class))
+                    ),
+                    @ApiResponse(responseCode = "404", description = "Không tìm thấy khiếu nại"),
+                    @ApiResponse(responseCode = "401", description = "Không có quyền truy cập")
+            }
+    )
+    @GetMapping(value = "/{complaintId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ComplaintDto getComplaintDetail(
+            @Parameter(description = "ID của khiếu nại cần xem", example = "123", required = true)
+            @PathVariable Long complaintId
+    ) {
+        return complaintRenterService.getComplaintDetail(complaintId);
     }
 }

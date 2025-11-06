@@ -22,6 +22,8 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 public class AuthServiceImpl implements AuthService {
 
@@ -59,6 +61,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (user == null) {
             throw new UserNotFoundException("Người dùng không tồn tại");
+        }
+
+        if (!Boolean.TRUE.equals(user.getIsActive())) {
+            throw new InvalidateParamsException("Tài khoản của bạn đã bị vô hiệu hóa, vui lòng liên hệ quản trị viên");
         }
 
         String hashedPassword = user.getPassword();
@@ -148,12 +154,19 @@ public class AuthServiceImpl implements AuthService {
             }
         }
 
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new InvalidateParamsException("Email đã được đăng ký");
+            }
+        }
+
         User newUser = new User();
         newUser.setPhone(phone);
         newUser.setPassword(passwordEncoder.encode(password));
         newUser.setFullName(fullName);
         newUser.setEmail(request.getEmail());
         newUser.setRole(Role.RENTER); // default role is RENTER
+        newUser.setCreatedAt(LocalDateTime.now());
 
         userRepository.save(newUser);
 
