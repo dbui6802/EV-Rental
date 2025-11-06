@@ -18,6 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Transactional
@@ -60,5 +61,30 @@ public class ComplaintRenterServiceImpl implements ComplaintRenterService {
         complaint.setCreatedAt(LocalDateTime.now());
 
         return complaintMapper.toComplaintDto(complaintRepository.save(complaint));
+    }
+
+    @Override
+    public List<ComplaintDto> getComplaintsOfRenter() {
+        User renter = userValidation.validateRenter();
+
+        List<Complaint> complaints = complaintRepository.findByRenterId(renter.getId());
+        return complaints.stream()
+                .map(complaintMapper::toComplaintDto)
+                .toList();
+    }
+
+    @Override
+    public ComplaintDto getComplaintDetail(Long complaintId) {
+        User renter = userValidation.validateRenter();
+
+        Complaint complaint = complaintRepository.findById(complaintId)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy khiếu nại với id = " + complaintId));
+
+        // Chỉ cho phép renter xem khiếu nại của chính họ
+        if (!complaint.getRenter().getId().equals(renter.getId())) {
+            throw new NotFoundException("Bạn không có quyền xem khiếu nại này");
+        }
+
+        return complaintMapper.toComplaintDto(complaint);
     }
 }

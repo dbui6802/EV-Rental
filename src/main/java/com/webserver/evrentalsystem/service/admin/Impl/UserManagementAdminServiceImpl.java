@@ -2,6 +2,8 @@ package com.webserver.evrentalsystem.service.admin.impl;
 
 import com.webserver.evrentalsystem.entity.Role;
 import com.webserver.evrentalsystem.entity.User;
+import com.webserver.evrentalsystem.entity.ReservationStatus;
+import com.webserver.evrentalsystem.entity.RentalStatus;
 import com.webserver.evrentalsystem.exception.ConflictException;
 import com.webserver.evrentalsystem.exception.InvalidateParamsException;
 import com.webserver.evrentalsystem.exception.NotFoundException;
@@ -11,8 +13,7 @@ import com.webserver.evrentalsystem.model.dto.request.CreateUserRequest;
 import com.webserver.evrentalsystem.model.dto.request.UpdateUserRequest;
 import com.webserver.evrentalsystem.model.mapping.DocumentMapper;
 import com.webserver.evrentalsystem.model.mapping.UserMapper;
-import com.webserver.evrentalsystem.repository.DocumentRepository;
-import com.webserver.evrentalsystem.repository.UserRepository;
+import com.webserver.evrentalsystem.repository.*;
 import com.webserver.evrentalsystem.service.admin.UserManagementAdminService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import jakarta.transaction.Transactional;
@@ -46,11 +47,26 @@ public class UserManagementAdminServiceImpl implements UserManagementAdminServic
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private StaffStationRepository staffStationRepository;
+
+    @Autowired
+    private RentalRepository rentalRepository;
+
+    @Autowired
+    private ReservationRepository reservationRepository;
+
     @Override
     public UserDto createUser(CreateUserRequest request) {
         userValidation.validateAdmin();
         if (userRepository.existsByPhone(request.getPhone())) {
             throw new ConflictException("Số điện thoại đã tồn tại");
+        }
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new ConflictException("Email đã tồn tại");
+            }
         }
 
         User user = new User();
@@ -101,6 +117,10 @@ public class UserManagementAdminServiceImpl implements UserManagementAdminServic
             if (!request.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
                 throw new InvalidateParamsException("Email không hợp lệ");
             }
+            if (!request.getEmail().equalsIgnoreCase(user.getEmail())
+                    && userRepository.existsByEmail(request.getEmail())) {
+                throw new ConflictException("Email đã tồn tại");
+            }
             user.setEmail(request.getEmail());
         }
         if (request.getPhone() != null) {
@@ -130,14 +150,41 @@ public class UserManagementAdminServiceImpl implements UserManagementAdminServic
     @Override
     public void deleteUser(Long id) {
         userValidation.validateAdmin();
-        if (!userRepository.existsById(id)) {
-            throw new NotFoundException("Không tìm thấy user với id = " + id);
-        }
+        User targetUser = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy user với id = " + id));
+
         User user = userValidation.validateAdmin();
         if (user.getId().equals(id)) {
             throw new InvalidateParamsException("Không thể xóa chính mình");
         }
-        userRepository.deleteById(id);
+
+        boolean isStaffAssigned = staffStationRepository.findByStaffIdAndIsActiveTrue(id) != null;
+        if (isStaffAssigned) {
+            throw new ConflictException("Không thể xóa nhân viên đang được phân công cho một trạm.");
+        }
+
+        boolean hasActiveRental = rentalRepository.existsByRenterIdAndStatusNotIn(
+                user.getId(),
+                List.of(RentalStatus.RETURNED, RentalStatus.CANCELLED)
+        );
+
+        if (hasActiveRental) {
+            throw new InvalidateParamsException("Người dùng đang có đơn thuê xe chưa kết thúc, không thể xóa");
+        }
+
+
+        boolean hasActiveReservation = reservationRepository.existsByRenterIdAndStatusNotIn(
+                user.getId(),
+                List.of(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED)
+        );
+
+        if (hasActiveReservation) {
+            throw new InvalidateParamsException("Người dùng đang có đặt chỗ chưa kết thúc, không thể xóa");
+        }
+
+        targetUser.setIsActive(false);
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(user);
     }
 
     @Override
