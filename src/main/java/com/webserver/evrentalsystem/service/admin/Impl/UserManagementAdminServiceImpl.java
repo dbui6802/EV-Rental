@@ -149,42 +149,45 @@ public class UserManagementAdminServiceImpl implements UserManagementAdminServic
 
     @Override
     public void deleteUser(Long id) {
-        userValidation.validateAdmin();
+        User admin = userValidation.validateAdmin();
+
+
         User targetUser = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy user với id = " + id));
 
-        User user = userValidation.validateAdmin();
-        if (user.getId().equals(id)) {
+
+        if (admin.getId().equals(id)) {
             throw new InvalidateParamsException("Không thể xóa chính mình");
         }
+
 
         boolean isStaffAssigned = staffStationRepository.findByStaffIdAndIsActiveTrue(id) != null;
         if (isStaffAssigned) {
             throw new ConflictException("Không thể xóa nhân viên đang được phân công cho một trạm.");
         }
 
+
         boolean hasActiveRental = rentalRepository.existsByRenterIdAndStatusNotIn(
-                user.getId(),
+                targetUser.getId(),
                 List.of(RentalStatus.RETURNED, RentalStatus.CANCELLED)
         );
-
         if (hasActiveRental) {
             throw new InvalidateParamsException("Người dùng đang có đơn thuê xe chưa kết thúc, không thể xóa");
         }
 
 
         boolean hasActiveReservation = reservationRepository.existsByRenterIdAndStatusNotIn(
-                user.getId(),
+                targetUser.getId(),
                 List.of(ReservationStatus.CANCELLED, ReservationStatus.EXPIRED)
         );
-
         if (hasActiveReservation) {
             throw new InvalidateParamsException("Người dùng đang có đặt chỗ chưa kết thúc, không thể xóa");
         }
 
+
         targetUser.setIsActive(false);
-        user.setUpdatedAt(LocalDateTime.now());
-        userRepository.save(user);
+        targetUser.setUpdatedAt(LocalDateTime.now());
+        userRepository.save(targetUser);
     }
 
     @Override

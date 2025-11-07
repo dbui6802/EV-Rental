@@ -1,8 +1,7 @@
 package com.webserver.evrentalsystem.controller.auth;
 
-import com.webserver.evrentalsystem.model.dto.request.RegisterRequest;
+import com.webserver.evrentalsystem.model.dto.request.*;
 import com.webserver.evrentalsystem.model.dto.response.RegisterResponse;
-import com.webserver.evrentalsystem.model.dto.request.SignInRequest;
 import com.webserver.evrentalsystem.model.dto.response.SignInResponse;
 import com.webserver.evrentalsystem.service.auth.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -56,5 +56,60 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest, HttpServletResponse response) {
         RegisterResponse registerResponse = authService.register(registerRequest, response);
         return ResponseEntity.ok(registerResponse);
+    }
+
+    @Operation(summary = "Xác thực OTP", description = "Xác thực OTP được gửi đến email của người dùng")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Xác thực OTP thành công"),
+            @ApiResponse(responseCode = "400", description = "OTP không hợp lệ hoặc đã hết hạn")
+    })
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody OtpRequest request) {
+        authService.verifyOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok("OTP verified successfully");
+    }
+
+    @Operation(summary = "Gửi lại OTP", description = "Gửi lại OTP mới đến email của người dùng")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Gửi lại OTP thành công")
+    })
+    @PostMapping("/resend-otp")
+    public ResponseEntity<?> resendOtp(@RequestParam String email) {
+        authService.resendOtp(email);
+        return ResponseEntity.ok("OTP resent successfully");
+    }
+
+    @Operation(summary = "Quên mật khẩu", description = "Gửi email chứa link đặt lại mật khẩu cho người dùng")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Email đặt lại mật khẩu đã được gửi đi"),
+            @ApiResponse(responseCode = "404", description = "Không tìm thấy người dùng với email này")
+    })
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok("Password reset email sent successfully");
+    }
+
+    @Operation(summary = "Đặt lại mật khẩu", description = "Đặt lại mật khẩu mới bằng token đã nhận")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Đặt lại mật khẩu thành công"),
+            @ApiResponse(responseCode = "400", description = "Token không hợp lệ hoặc đã hết hạn")
+    })
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.getToken(), request.getNewPassword());
+        return ResponseEntity.ok("Password has been reset successfully");
+    }
+
+    @Operation(summary = "Đổi mật khẩu", description = "Thay đổi mật khẩu cho người dùng đã đăng nhập")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Đổi mật khẩu thành công"),
+            @ApiResponse(responseCode = "400", description = "Yêu cầu không hợp lệ")
+    })
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> changePassword(@RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return ResponseEntity.ok("Password changed successfully");
     }
 }

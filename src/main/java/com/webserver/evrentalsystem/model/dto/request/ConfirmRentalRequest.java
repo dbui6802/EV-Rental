@@ -38,5 +38,4 @@ public class ConfirmRentalRequest {
     @Positive(message = "Odometer vui lòng nhập giá trị >= 0")
     @Schema(description = "Odometer (km)", example = "100000")
     Integer odo; // 0 to 100
-
 }

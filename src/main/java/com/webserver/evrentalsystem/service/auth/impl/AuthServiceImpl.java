@@ -4,6 +4,7 @@ import com.webserver.evrentalsystem.entity.Role;
 import com.webserver.evrentalsystem.entity.User;
 import com.webserver.evrentalsystem.exception.InvalidateParamsException;
 import com.webserver.evrentalsystem.exception.UserNotFoundException;
+import com.webserver.evrentalsystem.model.dto.request.ChangePasswordRequest;
 import com.webserver.evrentalsystem.model.dto.request.RegisterRequest;
 import com.webserver.evrentalsystem.model.dto.response.RegisterResponse;
 import com.webserver.evrentalsystem.model.dto.request.SignInRequest;
@@ -11,6 +12,7 @@ import com.webserver.evrentalsystem.model.dto.response.SignInResponse;
 import com.webserver.evrentalsystem.model.mapping.UserMapper;
 import com.webserver.evrentalsystem.repository.UserRepository;
 import com.webserver.evrentalsystem.service.auth.AuthService;
+import com.webserver.evrentalsystem.service.email.EmailService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import com.webserver.evrentalsystem.utils.CookieUtils;
 import com.webserver.evrentalsystem.utils.JwtUtils;
@@ -23,6 +25,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Random;
+import java.util.UUID;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -48,6 +52,13 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private JwtUtils jwtUtils;
 
+    @Autowired
+    private EmailService emailService;
+
+    private static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 minutes
+    private static final long RESET_TOKEN_VALID_DURATION_MINUTES = 15; // 15 minutes
+
+
     @Override
     public SignInResponse signIn(SignInRequest signinRequest, HttpServletResponse httpServletResponse) {
         String phone = signinRequest.getPhone();
@@ -61,6 +72,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (user == null) {
             throw new UserNotFoundException("Người dùng không tồn tại");
+        }
+
+        if (!user.isVerified()) {
+            throw new InvalidateParamsException("Tài khoản của bạn chưa được xác thực");
         }
 
         if (!Boolean.TRUE.equals(user.getIsActive())) {
@@ -129,7 +144,145 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidateParamsException("Số điện thoại không hợp lệ");
         }
 
-        // check strong password
+        validatePassword(password);
+
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
+            // validate email
+            String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
+            if (!request.getEmail().matches(emailRegex)) {
+                throw new InvalidateParamsException("Email không hợp lệ");
+            }
+        } else {
+            throw new InvalidateParamsException("Email không được để trống");
+        }
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new InvalidateParamsException("Email đã được đăng ký");
+        }
+
+        User newUser = new User();
+        newUser.setPhone(phone);
+        newUser.setPassword(passwordEncoder.encode(password));
+        newUser.setFullName(fullName);
+        newUser.setEmail(request.getEmail());
+        newUser.setRole(Role.RENTER); // default role is RENTER
+        newUser.setCreatedAt(LocalDateTime.now());
+
+        String otp = generateOtp();
+        newUser.setOtp(otp);
+        newUser.setOtpRequestedTime(LocalDateTime.now());
+
+        userRepository.save(newUser);
+        emailService.sendOtp(newUser.getEmail(), otp);
+
+        RegisterResponse registerResponse = new RegisterResponse();
+        registerResponse.setMessage("Đăng ký thành công, vui lòng kiểm tra email để xác thực");
+
+        return registerResponse;
+    }
+
+    @Override
+    public void verifyOtp(String email, String otp) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new UserNotFoundException("Người dùng không tồn tại");
+        }
+
+        if (user.getOtp() == null || !user.getOtp().equals(otp)) {
+            throw new InvalidateParamsException("OTP không hợp lệ");
+        }
+
+        long otpRequestedTimeMillis = user.getOtpRequestedTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+        if (otpRequestedTimeMillis + OTP_VALID_DURATION < System.currentTimeMillis()) {
+            throw new InvalidateParamsException("OTP đã hết hạn");
+        }
+
+        user.setVerified(true);
+        user.setOtp(null);
+        user.setOtpRequestedTime(null);
+        userRepository.save(user);
+    }
+
+    @Override
+    public void resendOtp(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new UserNotFoundException("Người dùng không tồn tại");
+        }
+
+        if (user.isVerified()) {
+            throw new InvalidateParamsException("Tài khoản đã được xác thực");
+        }
+
+        String otp = generateOtp();
+        user.setOtp(otp);
+        user.setOtpRequestedTime(LocalDateTime.now());
+        userRepository.save(user);
+
+        emailService.sendOtp(user.getEmail(), otp);
+    }
+
+    @Override
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email);
+        if (user == null) {
+            throw new UserNotFoundException("Không tìm thấy người dùng với email này");
+        }
+
+        String token = UUID.randomUUID().toString();
+        user.setResetPasswordToken(token);
+        user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_VALID_DURATION_MINUTES));
+        userRepository.save(user);
+
+        // You need to implement sendPasswordResetEmail in your EmailService
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
+    }
+
+    @Override
+    public void resetPassword(String token, String newPassword) {
+        User user = userRepository.findByResetPasswordToken(token);
+        if (user == null) {
+            throw new InvalidateParamsException("Token không hợp lệ hoặc đã hết hạn");
+        }
+
+        if (user.getResetPasswordTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new InvalidateParamsException("Token đã hết hạn");
+        }
+
+        validatePassword(newPassword);
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setResetPasswordToken(null);
+        user.setResetPasswordTokenExpiry(null);
+        userRepository.save(user);
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        User user = userValidation.validateUser();
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new InvalidateParamsException("Mật khẩu hiện tại không chính xác");
+        }
+
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
+            throw new InvalidateParamsException("Mật khẩu mới và xác nhận mật khẩu không khớp");
+        }
+
+        validatePassword(request.getNewPassword());
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+        userRepository.save(user);
+    }
+
+    private String generateOtp() {
+        Random random = new Random();
+        int otp = 100000 + random.nextInt(900000);
+        return String.valueOf(otp);
+    }
+
+    private void validatePassword(String password) {
         if (password.length() < 8) {
             throw new InvalidateParamsException("Mật khẩu phải có ít nhất 8 ký tự");
         }
@@ -145,34 +298,5 @@ public class AuthServiceImpl implements AuthService {
         if (!password.matches(".*[!@#$%^&*()].*")) {
             throw new InvalidateParamsException("Mật khẩu phải có ít nhất 1 ký tự đặc biệt");
         }
-
-        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
-            // validate email
-            String emailRegex = "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$";
-            if (!request.getEmail().matches(emailRegex)) {
-                throw new InvalidateParamsException("Email không hợp lệ");
-            }
-        }
-
-        if (request.getEmail() != null && !request.getEmail().isBlank()) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new InvalidateParamsException("Email đã được đăng ký");
-            }
-        }
-
-        User newUser = new User();
-        newUser.setPhone(phone);
-        newUser.setPassword(passwordEncoder.encode(password));
-        newUser.setFullName(fullName);
-        newUser.setEmail(request.getEmail());
-        newUser.setRole(Role.RENTER); // default role is RENTER
-        newUser.setCreatedAt(LocalDateTime.now());
-
-        userRepository.save(newUser);
-
-        RegisterResponse registerResponse = new RegisterResponse();
-        registerResponse.setMessage("Đăng ký thành công");
-
-        return registerResponse;
     }
 }

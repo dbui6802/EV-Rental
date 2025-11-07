@@ -127,6 +127,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean isResourceUrl(String url) {
+        if (url.contains("/auth/change-password")) {
+            return false;
+        }
+
         boolean isResourceUrl = false;
         List<String> resourceRequests = List.of(
                 "/auth/", "/public/", "/uploads/"
