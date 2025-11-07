@@ -17,7 +17,7 @@ public interface UserManagementAdminService {
 
     UserDto updateUser(Long id, UpdateUserRequest request);
 
-    void deleteUser(Long id);
+    void toggleUserStatus(Long id);
 
     List<DocumentDto> getRenterDocument(Long renterId);
 }
