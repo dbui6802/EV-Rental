@@ -25,6 +25,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -182,7 +185,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void verifyOtp(String email, String otp) {
+    public Map<String, String> verifyOtp(String email, String otp) {
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw new UserNotFoundException("Người dùng không tồn tại");
@@ -197,10 +200,27 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidateParamsException("OTP đã hết hạn");
         }
 
-        user.setVerified(true);
-        user.setOtp(null);
-        user.setOtpRequestedTime(null);
-        userRepository.save(user);
+        // Case 1: This is for account registration verification
+        if (!user.isVerified()) {
+            user.setVerified(true);
+            user.setOtp(null);
+            user.setOtpRequestedTime(null);
+            userRepository.save(user);
+            return Collections.emptyMap();
+        }
+        // Case 2: This is for password reset verification
+        else {
+            String token = UUID.randomUUID().toString();
+            user.setResetPasswordToken(token);
+            user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_VALID_DURATION_MINUTES));
+            user.setOtp(null); // OTP is used, clear it
+            user.setOtpRequestedTime(null);
+            userRepository.save(user);
+
+            Map<String, String> response = new HashMap<>();
+            response.put("token", token);
+            return response;
+        }
     }
 
     @Override
@@ -208,10 +228,6 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw new UserNotFoundException("Người dùng không tồn tại");
-        }
-
-        if (user.isVerified()) {
-            throw new InvalidateParamsException("Tài khoản đã được xác thực");
         }
 
         String otp = generateOtp();
@@ -229,13 +245,12 @@ public class AuthServiceImpl implements AuthService {
             throw new UserNotFoundException("Không tìm thấy người dùng với email này");
         }
 
-        String token = UUID.randomUUID().toString();
-        user.setResetPasswordToken(token);
-        user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_VALID_DURATION_MINUTES));
+        String otp = generateOtp();
+        user.setOtp(otp);
+        user.setOtpRequestedTime(LocalDateTime.now());
         userRepository.save(user);
 
-        // You need to implement sendPasswordResetEmail in your EmailService
-        emailService.sendPasswordResetEmail(user.getEmail(), token);
+        emailService.sendOtp(user.getEmail(), otp);
     }
 
     @Override
