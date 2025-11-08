@@ -1,6 +1,7 @@
 package com.webserver.evrentalsystem.service.staff.impl;
 
 import com.webserver.evrentalsystem.entity.*;
+import com.webserver.evrentalsystem.exception.ConflictException;
 import com.webserver.evrentalsystem.exception.InvalidateParamsException;
 import com.webserver.evrentalsystem.exception.NotFoundException;
 import com.webserver.evrentalsystem.model.dto.entitydto.VehicleDto;
@@ -82,5 +83,30 @@ public class VehicleStaffServiceImpl implements VehicleStaffService {
         if (request.getRangePerFullCharge() != null) vehicle.setRangePerFullCharge(request.getRangePerFullCharge());
 
         return vehicleMapper.toVehicleDto(vehicleRepository.save(vehicle));
+    }
+
+    @Override
+    public VehicleDto confirmVehicleInspection(String plateNumber) {
+        User staff = userValidation.validateStaff();
+
+        Vehicle vehicle = vehicleRepository.findByLicensePlateIgnoreCase(plateNumber)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe với biển số: " + plateNumber));
+
+
+        staffStationRepository.findAllByStaffId(staff.getId()).stream()
+                .filter(s -> s.getStation().getId().equals(vehicle.getStation().getId()))
+                .findFirst()
+                .orElseThrow(() -> new InvalidateParamsException("Nhân viên không thuộc trạm của xe này."));
+
+
+        if (vehicle.getStatus() != VehicleStatus.AWAITING_INSPECTION) {
+            throw new ConflictException("Xe không ở trạng thái chờ kiểm tra. Trạng thái hiện tại: " + vehicle.getStatus());
+        }
+
+
+        vehicle.setStatus(VehicleStatus.AVAILABLE);
+        Vehicle savedVehicle = vehicleRepository.save(vehicle);
+
+        return vehicleMapper.toVehicleDto(savedVehicle);
     }
 }

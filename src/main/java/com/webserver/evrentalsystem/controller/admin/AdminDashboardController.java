@@ -17,7 +17,7 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("api/admin/dashboard")
-@Tag(name = "5.1. Admin Dashboard", description = "API thống kê doanh thu và dữ liệu tổng quan cho Admin")
+@Tag(name = "4.09. Admin Dashboard", description = "API thống kê doanh thu và dữ liệu tổng quan cho Admin")
 @SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class AdminDashboardController {

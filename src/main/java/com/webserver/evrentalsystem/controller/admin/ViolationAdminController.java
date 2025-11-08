@@ -19,7 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("api/admin/violation")
-@Tag(name = "4.7. Admin Violation", description = "API quản lý vi phạm của admin")
+@Tag(name = "4.07. Admin Violation", description = "API quản lý vi phạm của admin")
 @SecurityRequirement(name = "bearerAuth")
 public class ViolationAdminController {
 

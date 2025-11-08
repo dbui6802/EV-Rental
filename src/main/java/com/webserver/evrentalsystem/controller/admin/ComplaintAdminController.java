@@ -17,7 +17,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("api/admin/complaint")
-@Tag(name = "4.6. Admin Complaint", description = "API quản lý khiếu nại của admin")
+@Tag(name = "4.06. Admin Complaint", description = "API quản lý khiếu nại của admin")
 @SecurityRequirement(name = "bearerAuth")
 public class ComplaintAdminController {
 

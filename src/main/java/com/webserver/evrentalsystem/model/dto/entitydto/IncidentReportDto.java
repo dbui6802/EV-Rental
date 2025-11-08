@@ -32,6 +32,9 @@ public class IncidentReportDto {
     @Schema(description = "Trạng thái báo cáo", example = "PENDING")
     private String status;
 
+    @Schema(description = "Ghi chú xử lý của Admin", example = "Đã thay lốp tại Gara ABC")
+    private String resolutionNotes;
+
     @Schema(description = "Thời gian tạo báo cáo", example = "2025-09-27T10:15:30")
     private LocalDateTime createdAt;
 }

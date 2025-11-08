@@ -45,6 +45,9 @@ public class IncidentReport {
     @JoinColumn(name = "admin_id")
     private User admin;
 
+    @Column(columnDefinition = "TEXT", name = "resolution_notes")
+    private String resolutionNotes;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

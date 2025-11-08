@@ -1,6 +1,8 @@
 package com.webserver.evrentalsystem.service.staff.impl;
 
 import com.webserver.evrentalsystem.entity.*;
+import com.webserver.evrentalsystem.exception.ConflictException;
+import com.webserver.evrentalsystem.exception.InvalidateParamsException;
 import com.webserver.evrentalsystem.exception.NotFoundException;
 import com.webserver.evrentalsystem.model.dto.entitydto.IncidentReportDto;
 import com.webserver.evrentalsystem.model.dto.request.IncidentReportRequest;
@@ -15,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -42,6 +46,19 @@ public class IncidentReportStaffServiceImpl implements IncidentReportStaffServic
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new NotFoundException("Vehicle not found"));
 
+
+        boolean hasExistingIncident = incidentReportRepository.existsByVehicleAndStatusIn(
+                vehicle,
+                List.of(IncidentStatus.PENDING, IncidentStatus.IN_REVIEW)
+        );
+
+        if (hasExistingIncident) {
+            throw new ConflictException("An incident report for this vehicle is already pending or in review.");
+        }
+
+        vehicle.setStatus(VehicleStatus.MAINTENANCE);
+        vehicleRepository.save(vehicle);
+
         Rental rental = null;
         if (request.getRentalId() != null) {
             rental = rentalRepository.findById(request.getRentalId())
@@ -59,5 +76,32 @@ public class IncidentReportStaffServiceImpl implements IncidentReportStaffServic
 
         report = incidentReportRepository.save(report);
         return incidentReportMapper.toIncidentReportDto(report);
+    }
+
+    @Override
+    public List<IncidentReportDto> getAllIncidents(String status) {
+        List<IncidentReport> incidents = incidentReportRepository.findAll();
+
+        if (status != null && !status.isBlank()) {
+            try {
+                IncidentStatus incidentStatus = IncidentStatus.valueOf(status.toUpperCase());
+                incidents = incidents.stream()
+                        .filter(i -> i.getStatus() == incidentStatus)
+                        .collect(Collectors.toList());
+            } catch (IllegalArgumentException e) {
+                throw new InvalidateParamsException("Invalid incident status value: " + status);
+            }
+        }
+
+        return incidents.stream()
+                .map(incidentReportMapper::toIncidentReportDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public IncidentReportDto getIncidentById(Long id) {
+        IncidentReport incidentReport = incidentReportRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Incident report not found with id: " + id));
+        return incidentReportMapper.toIncidentReportDto(incidentReport);
     }
 }

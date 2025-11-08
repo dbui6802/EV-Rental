@@ -19,7 +19,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("api/admin/vehicles")
-@Tag(name = "4.1. Admin Vehicle", description = "API quản lý phương tiện của Admin")
+@Tag(name = "4.01. Admin Vehicle", description = "API quản lý phương tiện của Admin")
 @SecurityRequirement(name = "bearerAuth")
 public class VehicleAdminController {
 

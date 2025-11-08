@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface VehicleRepository extends JpaRepository<Vehicle, Long>, JpaSpecificationExecutor<Vehicle> {
     @Query("SELECT v FROM Vehicle v WHERE v.id = :id AND v.status = 'available'")
@@ -20,5 +21,7 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long>, JpaSpec
     boolean existsByStationIdAndStatusIn(Long stationId, List<VehicleStatus> statuses);
 
     boolean existsByStationId(Long stationId);
+
+    Optional<Vehicle> findByLicensePlateIgnoreCase(String licensePlate);
 }
 

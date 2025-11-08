@@ -19,7 +19,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("api/admin/rental")
-@Tag(name = "4.5. Admin Rental", description = "API quản lý đơn thuê xe")
+@Tag(name = "4.05. Admin Rental", description = "API quản lý đơn thuê xe")
 @SecurityRequirement(name = "bearerAuth")
 @Validated
 public class RentalAdminController {
