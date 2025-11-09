@@ -9,8 +9,6 @@ import com.webserver.evrentalsystem.model.dto.entitydto.ComplaintDto;
 import com.webserver.evrentalsystem.model.dto.request.ResolveComplaintRequest;
 import com.webserver.evrentalsystem.model.mapping.ComplaintMapper;
 import com.webserver.evrentalsystem.repository.ComplaintRepository;
-import com.webserver.evrentalsystem.repository.RentalRepository;
-import com.webserver.evrentalsystem.repository.UserRepository;
 import com.webserver.evrentalsystem.service.admin.ComplaintAdminService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import jakarta.transaction.Transactional;
@@ -23,13 +21,6 @@ import java.util.List;
 @Service
 @Transactional
 public class ComplaintAdminServiceImpl implements ComplaintAdminService {
-
-    @Autowired
-    private RentalRepository rentalRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
     @Autowired
     private ComplaintRepository complaintRepository;
 
@@ -64,6 +55,10 @@ public class ComplaintAdminServiceImpl implements ComplaintAdminService {
         ComplaintStatus newStatus = ComplaintStatus.fromValue(request.getStatus());
         if (newStatus == null || newStatus == ComplaintStatus.PENDING) {
             throw new InvalidateParamsException("Trạng thái không hợp lệ. Chỉ cho phép 'resolved' hoặc 'rejected'");
+        }
+
+        if (request.getResolution() == null || request.getResolution().isBlank()) {
+            throw new InvalidateParamsException("Ghi chú xử lý là bắt buộc.");
         }
 
         complaint.setStatus(newStatus);

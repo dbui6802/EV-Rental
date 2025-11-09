@@ -248,14 +248,25 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
     @Override
     public RentalDto cancelRental(Long rentalId) {
-        Rental rental = rentalRepository.findById(rentalId).orElse(null);
-        if (rental == null) {
-            throw new NotFoundException("Lượt thuê (rental) không tồn tại");
-        }
+        Rental rental = rentalRepository.findById(rentalId)
+                .orElseThrow(() -> new NotFoundException("Lượt thuê (rental) không tồn tại"));
+
         if (rental.getStatus() != RentalStatus.BOOKED) {
             throw new ConflictException("Chỉ có thể hủy lượt thuê ở trạng thái BOOKED");
         }
+
         rental.setStatus(RentalStatus.CANCELLED);
+
+        if (rental.getDepositAmount() != null && rental.getDepositAmount().compareTo(BigDecimal.ZERO) > 0) {
+            rental.setDepositStatus(DepositStatus.FORFEITED);
+        }
+
+        Vehicle vehicle = rental.getVehicle();
+        if (vehicle != null) {
+            vehicle.setStatus(VehicleStatus.AVAILABLE);
+            vehicleRepository.save(vehicle);
+        }
+
         return rentalMapper.toRentalDto(rentalRepository.save(rental));
     }
 
