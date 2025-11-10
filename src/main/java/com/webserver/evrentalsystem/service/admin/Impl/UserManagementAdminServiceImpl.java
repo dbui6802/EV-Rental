@@ -18,6 +18,7 @@ import com.webserver.evrentalsystem.service.admin.UserManagementAdminService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -56,6 +57,9 @@ public class UserManagementAdminServiceImpl implements UserManagementAdminServic
     @Autowired
     private ReservationRepository reservationRepository;
 
+    @Value("${ADMIN_PHONE_NUMBER}")
+    private String superAdminPhoneNumber;
+
     @Override
     public UserDto createUser(CreateUserRequest request) {
         userValidation.validateAdmin();
@@ -69,12 +73,18 @@ public class UserManagementAdminServiceImpl implements UserManagementAdminServic
             }
         }
 
+        Role role = Role.fromValue(request.getRole());
+        if (role == null || role == Role.RENTER) {
+            throw new InvalidateParamsException("Từ trang quản trị, chỉ có thể tạo tài khoản 'staff' hoặc 'admin'");
+        }
+
         User user = new User();
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.fromValue(request.getRole()));
+        user.setVerified(true);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         return userMapper.toUserDto(userRepository.save(user));
@@ -153,12 +163,15 @@ public class UserManagementAdminServiceImpl implements UserManagementAdminServic
         User targetUser = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy user với id = " + id));
 
+        if (targetUser.getPhone().equals(superAdminPhoneNumber)) {
+            throw new InvalidateParamsException("Không thể vô hiệu hóa tài khoản quản trị viên gốc.");
+        }
+
         User adminUser = userValidation.validateAdmin();
         if (adminUser.getId().equals(id)) {
             throw new InvalidateParamsException("Không thể tự vô hiệu hóa chính mình");
         }
 
-        // If we are deactivating the user, check for conflicts.
         if (targetUser.getIsActive()) {
             boolean isStaffAssigned = staffStationRepository.findByStaffIdAndIsActiveTrue(id) != null;
             if (isStaffAssigned) {
@@ -184,7 +197,6 @@ public class UserManagementAdminServiceImpl implements UserManagementAdminServic
             }
         }
 
-        // Toggle the isActive status
         targetUser.setIsActive(!targetUser.getIsActive());
         targetUser.setUpdatedAt(LocalDateTime.now());
         userRepository.save(targetUser);
