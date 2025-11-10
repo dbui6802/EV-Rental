@@ -17,6 +17,7 @@ import com.webserver.evrentalsystem.model.mapping.ViolationMapper;
 import com.webserver.evrentalsystem.repository.*;
 import com.webserver.evrentalsystem.service.staff.RentalStaffService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
+import com.webserver.evrentalsystem.specification.RentalSpecification;
 import com.webserver.evrentalsystem.specification.ReservationSpecification;
 import com.webserver.evrentalsystem.utils.FileStorageUtils;
 import jakarta.transaction.Transactional;
@@ -29,6 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -78,6 +80,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
     @Value("${min.deposit.of.high.risk}")
     private BigDecimal minDepositOfHighRisk;
 
+    @Override
     public List<ReservationDto> getReservations(ReservationFilterRequest filter) {
         List<Reservation> reservations = reservationRepository.findAll(
                 Specification.where(ReservationSpecification.hasRenter(filter.getRenterId()))
@@ -92,34 +95,39 @@ public class RentalStaffServiceImpl implements RentalStaffService {
                 .toList();
     }
 
+    @Override
     public List<RentalDto> getRentals(Long renterId, Long vehicleId, Long stationPickupId,
                                       Long stationReturnId, String status,
                                       LocalDateTime startFrom, LocalDateTime startTo) {
-        Specification<Rental> spec = Specification.where(null);
+        User staff = userValidation.validateStaff();
+        StaffStation activeAssignment = staffStationRepository.findByStaffIdAndIsActiveTrue(staff.getId());
 
-        if (renterId != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("renter").get("id"), renterId));
-        }
-        if (vehicleId != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("vehicle").get("id"), vehicleId));
-        }
-        if (stationPickupId != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("stationPickup").get("id"), stationPickupId));
-        }
-        if (stationReturnId != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("stationReturn").get("id"), stationReturnId));
-        }
-        if (status != null) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), RentalStatus.valueOf(status.toUpperCase())));
-        }
-        if (startFrom != null) {
-            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("startTime"), startFrom));
-        }
-        if (startTo != null) {
-            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("startTime"), startTo));
+        if (activeAssignment == null) {
+            return Collections.emptyList();
         }
 
-        return rentalRepository.findAll(spec).stream()
+
+        Specification<Rental> baseSpec = RentalSpecification.isAtStaffStation(activeAssignment.getStation());
+
+        RentalStatus rentalStatus = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                rentalStatus = RentalStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+
+            }
+        }
+
+        Specification<Rental> finalSpec = baseSpec
+                .and(RentalSpecification.hasRenter(renterId))
+                .and(RentalSpecification.hasVehicle(vehicleId))
+                .and(RentalSpecification.hasStationPickup(stationPickupId))
+                .and(RentalSpecification.hasStationReturn(stationReturnId))
+                .and(RentalSpecification.hasStatus(rentalStatus))
+                .and(RentalSpecification.startFrom(startFrom))
+                .and(RentalSpecification.startTo(startTo));
+
+        return rentalRepository.findAll(finalSpec).stream()
                 .map(rentalMapper::toRentalDto)
                 .toList();
     }

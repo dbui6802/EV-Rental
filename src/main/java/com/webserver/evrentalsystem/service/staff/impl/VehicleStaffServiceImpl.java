@@ -16,6 +16,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,10 +42,13 @@ public class VehicleStaffServiceImpl implements VehicleStaffService {
     @Override
     public List<VehicleDto> getAllVehicles(String status, String plateNumber) {
         User staff = userValidation.validateStaff();
-        Station station = staffStationRepository.findAllByStaffId(staff.getId()).stream()
-                .findFirst()
-                .orElseThrow(() -> new InvalidateParamsException("Nhân viên chưa được phân công trạm"))
-                .getStation();
+        StaffStation activeAssignment = staffStationRepository.findByStaffIdAndIsActiveTrue(staff.getId());
+
+        if (activeAssignment == null) {
+            return Collections.emptyList();
+        }
+
+        Station station = activeAssignment.getStation();
 
         List<Vehicle> vehicles = vehicleRepository.findByStationId(station.getId());
 

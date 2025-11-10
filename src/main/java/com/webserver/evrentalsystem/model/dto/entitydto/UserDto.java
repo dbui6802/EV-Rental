@@ -36,4 +36,7 @@ public class UserDto {
 
     @Schema(description = "Trạng thái hoạt động của người dùng (true: hoạt động, false: đã vô hiệu hóa)", example = "true")
     private Boolean isActive;
+
+    @Schema(description = "Trạng thái xác thực của người dùng (true: xác thực, false: chưa xác thực)", example = "true")
+    private Boolean isVerified;
 }

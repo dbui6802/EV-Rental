@@ -10,13 +10,16 @@ import com.webserver.evrentalsystem.model.mapping.IncidentReportMapper;
 import com.webserver.evrentalsystem.repository.IncidentReportRepository;
 import com.webserver.evrentalsystem.repository.RentalRepository;
 import com.webserver.evrentalsystem.repository.VehicleRepository;
+import com.webserver.evrentalsystem.repository.StaffStationRepository;
 import com.webserver.evrentalsystem.service.staff.IncidentReportStaffService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,12 +42,15 @@ public class IncidentReportStaffServiceImpl implements IncidentReportStaffServic
     @Autowired
     private IncidentReportMapper incidentReportMapper;
 
+    @Autowired
+    private StaffStationRepository staffStationRepository;
+
     @Override
     public IncidentReportDto createIncidentReport(IncidentReportRequest request) {
         User staff = userValidation.validateStaff();
 
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                .orElseThrow(() -> new NotFoundException("Vehicle not found"));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
 
 
         boolean hasExistingIncident = incidentReportRepository.existsByVehicleAndStatusIn(
@@ -53,7 +59,7 @@ public class IncidentReportStaffServiceImpl implements IncidentReportStaffServic
         );
 
         if (hasExistingIncident) {
-            throw new ConflictException("An incident report for this vehicle is already pending or in review.");
+            throw new ConflictException("Đã tồn tại một báo cáo sự cố cho xe này đang ở trạng thái chờ xử lý hoặc đang xem xét.");
         }
 
         vehicle.setStatus(VehicleStatus.MAINTENANCE);
@@ -62,7 +68,7 @@ public class IncidentReportStaffServiceImpl implements IncidentReportStaffServic
         Rental rental = null;
         if (request.getRentalId() != null) {
             rental = rentalRepository.findById(request.getRentalId())
-                    .orElseThrow(() -> new NotFoundException("Rental not found"));
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy lượt thuê"));
         }
 
         IncidentReport report = new IncidentReport();
@@ -80,18 +86,28 @@ public class IncidentReportStaffServiceImpl implements IncidentReportStaffServic
 
     @Override
     public List<IncidentReportDto> getAllIncidents(String status) {
-        List<IncidentReport> incidents = incidentReportRepository.findAll();
+        User staff = userValidation.validateStaff();
+        StaffStation activeAssignment = staffStationRepository.findByStaffIdAndIsActiveTrue(staff.getId());
+
+        if (activeAssignment == null) {
+            return Collections.emptyList();
+        }
+        Long stationId = activeAssignment.getStation().getId();
+
+        Specification<IncidentReport> spec = (root, query, cb) -> {
+            return cb.equal(root.get("vehicle").get("station").get("id"), stationId);
+        };
 
         if (status != null && !status.isBlank()) {
             try {
                 IncidentStatus incidentStatus = IncidentStatus.valueOf(status.toUpperCase());
-                incidents = incidents.stream()
-                        .filter(i -> i.getStatus() == incidentStatus)
-                        .collect(Collectors.toList());
+                spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), incidentStatus));
             } catch (IllegalArgumentException e) {
-                throw new InvalidateParamsException("Invalid incident status value: " + status);
+                throw new InvalidateParamsException("Giá trị trạng thái sự cố không hợp lệ: " + status);
             }
         }
+
+        List<IncidentReport> incidents = incidentReportRepository.findAll(spec);
 
         return incidents.stream()
                 .map(incidentReportMapper::toIncidentReportDto)
@@ -101,7 +117,7 @@ public class IncidentReportStaffServiceImpl implements IncidentReportStaffServic
     @Override
     public IncidentReportDto getIncidentById(Long id) {
         IncidentReport incidentReport = incidentReportRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Incident report not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy báo cáo sự cố với ID: " + id));
         return incidentReportMapper.toIncidentReportDto(incidentReport);
     }
 }
