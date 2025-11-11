@@ -22,7 +22,7 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, JpaSpecif
         FROM Rental r
         WHERE r.status = 'returned'
         AND (:stationId IS NULL OR r.stationReturn.id = :stationId)
-        AND r.endTime BETWEEN :startDate AND :endDate
+        AND r.endTime >= :startDate AND r.endTime < :endDate
     """)
     BigDecimal findTotalRevenue(LocalDateTime startDate, LocalDateTime endDate, Long stationId);
 
@@ -31,9 +31,10 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, JpaSpecif
         FROM Rental r
         WHERE r.status = 'returned'
         AND (:stationId IS NULL OR r.stationReturn.id = :stationId)
-        AND r.endTime BETWEEN :startDate AND :endDate
+        AND r.endTime >= :startDate AND r.endTime < :endDate
         GROUP BY r.stationReturn.name
     """)
     List<Object[]> findRevenueByStation(LocalDateTime startDate, LocalDateTime endDate, Long stationId);
+
 }
 

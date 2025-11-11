@@ -8,4 +8,5 @@ import java.util.List;
 public interface VehicleStaffService {
     List<VehicleDto> getAllVehicles(String status, String plateNumber);
     VehicleDto updateVehicle(Long id, StaffUpdateVehicleRequest request);
+    VehicleDto confirmVehicleInspection(String plateNumber);
 }

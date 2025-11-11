@@ -6,7 +6,8 @@ import lombok.Getter;
 public enum DepositStatus {
     PENDING("pending"),
     HELD("held"),
-    REFUNDED("refunded");
+    REFUNDED("refunded"),
+    FORFEITED("forfeited");
 
     private final String value;
 

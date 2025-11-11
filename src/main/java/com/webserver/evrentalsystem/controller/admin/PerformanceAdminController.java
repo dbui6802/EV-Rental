@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("api/admin/performance")
-@Tag(name = "4.8. Admin Performance", description = "API quản lý hiệu suất của admin")
+@Tag(name = "4.08. Admin Performance", description = "API quản lý hiệu suất của admin")
 @SecurityRequirement(name = "bearerAuth")
 public class PerformanceAdminController {
 

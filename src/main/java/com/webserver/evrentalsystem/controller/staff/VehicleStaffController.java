@@ -2,13 +2,13 @@ package com.webserver.evrentalsystem.controller.staff;
 
 import com.webserver.evrentalsystem.model.dto.entitydto.VehicleDto;
 import com.webserver.evrentalsystem.model.dto.request.StaffUpdateVehicleRequest;
-import com.webserver.evrentalsystem.model.dto.request.UpdateVehicleRequest;
 import com.webserver.evrentalsystem.service.staff.VehicleStaffService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,5 +48,17 @@ public class VehicleStaffController {
             @RequestBody StaffUpdateVehicleRequest request
     ) {
         return vehicleStaffService.updateVehicle(id, request);
+    }
+
+    @Operation(
+            summary = "Xác nhận kiểm tra xe bằng biển số",
+            description = "Nhân viên xác nhận một chiếc xe đã bảo trì xong, đã qua kiểm tra và hiện đã sẵn sàng cho thuê. Chuyển trạng thái của xe từ AWAITING_INSPECTION (Chờ kiểm tra) sang AVAILABLE (Sẵn sàng)."
+    )
+    @ApiResponse(responseCode = "200", description = "Trạng thái xe đã được cập nhật thành Sẵn sàng")
+    @PostMapping("/{plateNumber}/confirm-inspection")
+    public ResponseEntity<VehicleDto> confirmVehicleInspection(
+            @Parameter(description = "Biển số của xe đã được kiểm tra")
+            @PathVariable String plateNumber) {
+        return ResponseEntity.ok(vehicleStaffService.confirmVehicleInspection(plateNumber));
     }
 }

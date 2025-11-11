@@ -20,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("api/admin/staff-stations")
-@Tag(name = "4.4. Admin Staff Station", description = "API quản lý nhân viên làm việc tại trạm")
+@Tag(name = "4.04. Admin Staff Station", description = "API quản lý nhân viên làm việc tại trạm")
 @SecurityRequirement(name = "bearerAuth")
 @Validated
 public class StaffStationAdminController {

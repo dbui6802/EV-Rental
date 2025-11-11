@@ -21,7 +21,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("api/admin/users")
-@Tag(name = "4.3. Admin User Management", description = "API quản lý nhân viên và admin")
+@Tag(name = "4.03. Admin User Management", description = "API quản lý nhân viên và admin")
 @SecurityRequirement(name = "bearerAuth")
 public class UserManagementAdminController {
 
@@ -63,10 +63,10 @@ public class UserManagementAdminController {
         return userManagementAdminService.updateUser(id, request);
     }
 
-    @Operation(summary = "Xóa user")
-    @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable Long id) {
-        userManagementAdminService.deleteUser(id);
+    @Operation(summary = "Kích hoạt/Vô hiệu hóa user")
+    @PatchMapping("/toggle-status/{id}")
+    public void toggleUserStatus(@PathVariable Long id) {
+        userManagementAdminService.toggleUserStatus(id);
     }
 
     @Operation(summary = "Lấy thông tin hồ sơ của khách hàng")
