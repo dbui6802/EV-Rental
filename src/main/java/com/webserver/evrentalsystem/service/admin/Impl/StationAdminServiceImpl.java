@@ -87,8 +87,12 @@ public class StationAdminServiceImpl implements StationAdminService {
         Station station = stationRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy trạm với id = " + id));
 
-        if (stationRepository.existsByName(request.getName())) {
-            throw new InvalidateParamsException("Tên trạm đã tồn tại");
+        if (request.getName() != null) {
+            stationRepository.findByNameAndIdNot(request.getName(), id)
+                    .ifPresent(existingStation -> {
+                        throw new ConflictException("Tên trạm '" + request.getName() + "' đã tồn tại.");
+                    });
+            station.setName(request.getName());
         }
 
         if (request.getName() != null) station.setName(request.getName());
