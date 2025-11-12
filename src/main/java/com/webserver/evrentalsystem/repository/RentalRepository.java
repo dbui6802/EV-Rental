@@ -2,6 +2,7 @@ package com.webserver.evrentalsystem.repository;
 
 import com.webserver.evrentalsystem.entity.Rental;
 import com.webserver.evrentalsystem.entity.RentalStatus;
+import com.webserver.evrentalsystem.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,8 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, JpaSpecif
     List<Rental> findByRenterId(Long renterId);
 
     boolean existsByRenterIdAndStatusNotIn(Long renterId, List<RentalStatus> statuses);
+
+    boolean existsByRenterAndStatusIn(User renter, List<RentalStatus> statuses);
 
     @Query("""
         SELECT COALESCE(SUM(r.totalCost), 0)
