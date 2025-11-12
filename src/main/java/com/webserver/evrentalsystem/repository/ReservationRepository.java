@@ -2,6 +2,7 @@ package com.webserver.evrentalsystem.repository;
 
 import com.webserver.evrentalsystem.entity.Reservation;
 import com.webserver.evrentalsystem.entity.ReservationStatus;
+import com.webserver.evrentalsystem.entity.User;
 import com.webserver.evrentalsystem.entity.Vehicle;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -20,4 +21,5 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long>,
     List<Reservation> findAllByStatusAndCreatedAtBefore(ReservationStatus status, LocalDateTime time);
 
     boolean existsByRenterIdAndStatusNotIn(Long renterId, List<ReservationStatus> statuses);
+    boolean existsByRenterAndStatusIn(User renter, List<ReservationStatus> statuses);
 }

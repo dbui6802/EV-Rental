@@ -11,10 +11,7 @@ import com.webserver.evrentalsystem.model.dto.request.CreateReservationRequest;
 import com.webserver.evrentalsystem.model.mapping.ReservationMapper;
 import com.webserver.evrentalsystem.model.mapping.StationMapper;
 import com.webserver.evrentalsystem.model.mapping.VehicleMapper;
-import com.webserver.evrentalsystem.repository.ReservationRepository;
-import com.webserver.evrentalsystem.repository.StationRepository;
-import com.webserver.evrentalsystem.repository.UserRepository;
-import com.webserver.evrentalsystem.repository.VehicleRepository;
+import com.webserver.evrentalsystem.repository.*;
 import com.webserver.evrentalsystem.service.renter.BookingRenterService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import com.webserver.evrentalsystem.specification.ReservationSpecification;
@@ -56,6 +53,9 @@ public class BookingRenterServiceImpl implements BookingRenterService {
     @Autowired
     private ReservationMapper reservationMapper;
 
+    @Autowired
+    private RentalRepository rentalRepository;
+
     @Override
     public List<StationDto> getStations() {
         return stationRepository.findAllActiveStations().stream()
@@ -89,28 +89,38 @@ public class BookingRenterServiceImpl implements BookingRenterService {
     @Override
     public ReservationDto createReservation(CreateReservationRequest request) {
         User renter = userValidation.validateRenter();
+
+        boolean hasActiveReservation = reservationRepository.existsByRenterAndStatusIn(renter,
+                List.of(ReservationStatus.PENDING));
+        boolean hasActiveRental = rentalRepository.existsByRenterAndStatusIn(renter,
+                List.of(RentalStatus.BOOKED, RentalStatus.WAIT_CONFIRM, RentalStatus.IN_USE, RentalStatus.WAITING_FOR_PAYMENT));
+
+        if (hasActiveReservation || hasActiveRental) {
+            throw new ConflictException("Bạn đã có một lượt đặt xe hoặc thuê xe đang hoạt động. Vui lòng hoàn tất hoặc hủy yêu cầu hiện tại trước khi tạo một yêu cầu mới.");
+        }
+
         Long vehicleId = request.getVehicleId();
         LocalDateTime reservedStartTime = request.getReservedStartTime();
         LocalDateTime reservedEndTime = request.getReservedEndTime();
 
-        // Validate input
+
         if (vehicleId == null) {
             throw new InvalidateParamsException("vehicleId không được để trống.");
         }
         if (reservedStartTime == null || reservedEndTime == null) {
             throw new InvalidateParamsException("reservedStartTime và reservedEndTime không được để trống.");
         }
-        // Check vehicle exists and is available at the station
+
         Vehicle vehicle = vehicleRepository.findByIdAndStatusAvailable(vehicleId);
         if (vehicle == null) {
             throw new NotFoundException("Xe không tồn tại hoặc không khả dụng tại trạm.");
         }
-        // Check station exists
+
         Station station = stationRepository.findByIdAndActiveTrue(vehicle.getStation().getId());
         if (station == null) {
             throw new NotFoundException("Trạm không tồn tại hoặc không hoạt động.");
         }
-        // Check time validity
+
         if (reservedEndTime.isBefore(reservedStartTime) || reservedEndTime.isEqual(reservedStartTime)) {
             throw new ConflictException("Thời gian kết thúc phải sau thời gian bắt đầu.");
         }
