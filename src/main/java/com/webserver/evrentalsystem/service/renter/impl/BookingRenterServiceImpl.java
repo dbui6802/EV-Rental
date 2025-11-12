@@ -91,7 +91,7 @@ public class BookingRenterServiceImpl implements BookingRenterService {
         User renter = userValidation.validateRenter();
 
         boolean hasActiveReservation = reservationRepository.existsByRenterAndStatusIn(renter,
-                List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED));
+                List.of(ReservationStatus.PENDING));
         boolean hasActiveRental = rentalRepository.existsByRenterAndStatusIn(renter,
                 List.of(RentalStatus.BOOKED, RentalStatus.WAIT_CONFIRM, RentalStatus.IN_USE, RentalStatus.WAITING_FOR_PAYMENT));
 
