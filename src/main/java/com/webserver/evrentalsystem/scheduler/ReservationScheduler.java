@@ -6,10 +6,11 @@ import com.webserver.evrentalsystem.entity.Vehicle;
 import com.webserver.evrentalsystem.entity.VehicleStatus;
 import com.webserver.evrentalsystem.repository.ReservationRepository;
 import com.webserver.evrentalsystem.repository.VehicleRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +26,7 @@ class ReservationScheduler {
 
     // Run every 5 minutes to check for expired reservations
     @Scheduled(cron = "0 */5 * * * *")
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void expireOldReservations() {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expireTime = now.minusHours(1);

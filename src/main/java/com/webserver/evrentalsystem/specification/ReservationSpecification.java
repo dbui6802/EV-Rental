@@ -1,7 +1,11 @@
+
 package com.webserver.evrentalsystem.specification;
 
 import com.webserver.evrentalsystem.entity.Reservation;
 import com.webserver.evrentalsystem.entity.ReservationStatus;
+import com.webserver.evrentalsystem.entity.Station;
+import com.webserver.evrentalsystem.entity.Vehicle;
+import jakarta.persistence.criteria.Join;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
@@ -31,5 +35,15 @@ public class ReservationSpecification {
     public static Specification<Reservation> startTo(LocalDateTime startTo) {
         return (root, query, cb) ->
                 startTo == null ? null : cb.lessThanOrEqualTo(root.get("reservedStartTime"), startTo);
+    }
+
+    public static Specification<Reservation> isAtStaffStation(Station station) {
+        return (root, query, cb) -> {
+            if (station == null) {
+                return cb.conjunction();
+            }
+            Join<Reservation, Vehicle> vehicleJoin = root.join("vehicle");
+            return cb.equal(vehicleJoin.get("station"), station);
+        };
     }
 }

@@ -82,13 +82,21 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
     @Override
     public List<ReservationDto> getReservations(ReservationFilterRequest filter) {
-        List<Reservation> reservations = reservationRepository.findAll(
-                Specification.where(ReservationSpecification.hasRenter(filter.getRenterId()))
-                        .and(ReservationSpecification.hasVehicle(filter.getVehicleId()))
-                        .and(ReservationSpecification.hasStatus(ReservationStatus.fromValue(filter.getStatus())))
-                        .and(ReservationSpecification.startFrom(filter.getStartFrom()))
-                        .and(ReservationSpecification.startTo(filter.getStartTo()))
-        );
+        User staff = userValidation.validateStaff();
+        StaffStation activeAssignment = staffStationRepository.findByStaffIdAndIsActiveTrue(staff.getId());
+
+        if (activeAssignment == null) {
+            return Collections.emptyList();
+        }
+
+        Specification<Reservation> spec = Specification.where(ReservationSpecification.isAtStaffStation(activeAssignment.getStation()))
+                .and(ReservationSpecification.hasRenter(filter.getRenterId()))
+                .and(ReservationSpecification.hasVehicle(filter.getVehicleId()))
+                .and(ReservationSpecification.hasStatus(ReservationStatus.fromValue(filter.getStatus())))
+                .and(ReservationSpecification.startFrom(filter.getStartFrom()))
+                .and(ReservationSpecification.startTo(filter.getStartTo()));
+
+        List<Reservation> reservations = reservationRepository.findAll(spec);
 
         return reservations.stream()
                 .map(reservationMapper::toReservationDto)
