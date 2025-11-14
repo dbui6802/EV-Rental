@@ -16,7 +16,7 @@ public interface RentalRepository extends JpaRepository<Rental, Long>, JpaSpecif
 
     boolean existsByRenterIdAndStatusNotIn(Long renterId, List<RentalStatus> statuses);
 
-    boolean existsByRenterAndStatusIn(User renter, List<RentalStatus> statuses);
+    //boolean existsByRenterAndStatusIn(User renter, List<RentalStatus> statuses);
 
     @Query("""
         SELECT COALESCE(SUM(r.rentalCost + r.insurance), 0)

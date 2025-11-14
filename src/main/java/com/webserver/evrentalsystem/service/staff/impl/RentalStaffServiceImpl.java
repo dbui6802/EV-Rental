@@ -525,14 +525,25 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
 
         if (actualEnd.isBefore(expectedEnd)) {
-            BigDecimal refund = rentalCost.subtract(usedCost);
-            if (refund.compareTo(BigDecimal.ZERO) < 0) refund = BigDecimal.ZERO;
 
+            // 1. Tính phần tiền chưa dùng
+            BigDecimal unusedCost = rentalCost.subtract(usedCost);
 
-            BigDecimal refundRate = bookedHours >= 24 ? new BigDecimal("0.8") : BigDecimal.ONE;
-            refund = refund.multiply(refundRate);
+            // 2. Không cho âm
+            if (unusedCost.compareTo(BigDecimal.ZERO) < 0) {
+                unusedCost = BigDecimal.ZERO;
+            }
 
-            totalBill = totalBill.subtract(refund);
+            // 3. Tính tỷ lệ refund
+            BigDecimal refundRate = bookedHours >= 24
+                    ? new BigDecimal("0.8")   // hoàn tối đa 80%
+                    : BigDecimal.ONE;         // hoàn 100% nếu dưới 24h
+
+            // 4. Số tiền được hoàn
+            BigDecimal refund = unusedCost.multiply(refundRate);
+
+            // 5. Tổng tiền khách phải trả
+            totalBill = rentalCost.subtract(refund);
         }
 
 

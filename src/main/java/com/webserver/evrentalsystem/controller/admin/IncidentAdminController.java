@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -40,7 +39,7 @@ public class IncidentAdminController {
     )
     @PutMapping
     public ResponseEntity<IncidentReportDto> updateIncidentStatus(
-            @Valid @RequestBody ResolveIncidentRequest request) {
+            @RequestBody ResolveIncidentRequest request) {
         return ResponseEntity.ok(incidentAdminService.resolveIncident(request));
     }
 }

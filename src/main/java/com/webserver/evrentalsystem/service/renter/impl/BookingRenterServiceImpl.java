@@ -90,14 +90,14 @@ public class BookingRenterServiceImpl implements BookingRenterService {
     public ReservationDto createReservation(CreateReservationRequest request) {
         User renter = userValidation.validateRenter();
 
-        boolean hasActiveReservation = reservationRepository.existsByRenterAndStatusIn(renter,
-                List.of(ReservationStatus.PENDING));
-        boolean hasActiveRental = rentalRepository.existsByRenterAndStatusIn(renter,
-                List.of(RentalStatus.BOOKED, RentalStatus.WAIT_CONFIRM, RentalStatus.IN_USE, RentalStatus.WAITING_FOR_PAYMENT));
-
-        if (hasActiveReservation || hasActiveRental) {
-            throw new ConflictException("Bạn đã có một lượt đặt xe hoặc thuê xe đang hoạt động. Vui lòng hoàn tất hoặc hủy yêu cầu hiện tại trước khi tạo một yêu cầu mới.");
-        }
+//        boolean hasActiveReservation = reservationRepository.existsByRenterAndStatusIn(renter,
+//                List.of(ReservationStatus.PENDING));
+//        boolean hasActiveRental = rentalRepository.existsByRenterAndStatusIn(renter,
+//                List.of(RentalStatus.BOOKED, RentalStatus.WAIT_CONFIRM, RentalStatus.IN_USE, RentalStatus.WAITING_FOR_PAYMENT));
+//
+//        if (hasActiveReservation || hasActiveRental) {
+//            throw new ConflictException("Bạn đã có một lượt đặt xe hoặc thuê xe đang hoạt động. Vui lòng hoàn tất hoặc hủy yêu cầu hiện tại trước khi tạo một yêu cầu mới.");
+//        }
 
         Long vehicleId = request.getVehicleId();
         LocalDateTime reservedStartTime = request.getReservedStartTime();
