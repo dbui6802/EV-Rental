@@ -476,11 +476,25 @@ public class RentalStaffServiceImpl implements RentalStaffService {
             throw new ConflictException("Chỉ có thể thêm chi phí phát sinh cho lượt thuê ở trạng thái WAIT_CONFIRM, IN_USE hoặc WAITING_FOR_PAYMENT");
         }
 
+        BigDecimal fineAmount = request.getFineAmount();
+
+        if (rental.getInsurance() != null && rental.getInsurance().compareTo(BigDecimal.ZERO) > 0) {
+            Vehicle vehicle = rental.getVehicle();
+            if (vehicle != null) {
+                VehicleType vehicleType = vehicle.getType();
+                if (vehicleType == VehicleType.CAR && fineAmount.compareTo(new BigDecimal("3000000")) < 0) {
+                    fineAmount = BigDecimal.ZERO;
+                } else if (vehicleType == VehicleType.MOTORBIKE && fineAmount.compareTo(new BigDecimal("1000000")) < 0) {
+                    fineAmount = BigDecimal.ZERO;
+                }
+            }
+        }
+
         Violation violation = new Violation();
         violation.setRental(rental);
         violation.setStaff(staff);
         violation.setDescription(request.getDescription());
-        violation.setFineAmount(request.getFineAmount());
+        violation.setFineAmount(fineAmount);
         violation.setCreatedAt(LocalDateTime.now());
 
         return violationMapper.toViolationDto(violationRepository.save(violation));
