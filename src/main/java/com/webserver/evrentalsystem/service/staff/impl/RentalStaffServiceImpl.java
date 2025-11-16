@@ -273,7 +273,9 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
         rental.setStatus(RentalStatus.CANCELLED);
 
-        if (rental.getDepositAmount() != null && rental.getDepositAmount().compareTo(BigDecimal.ZERO) > 0) {
+        if (rental.getDepositStatus() == DepositStatus.PENDING) {
+            rental.setDepositStatus(DepositStatus.WAIVED);
+        } else if (rental.getDepositAmount() != null && rental.getDepositAmount().compareTo(BigDecimal.ZERO) > 0) {
             rental.setDepositStatus(DepositStatus.FORFEITED);
         }
 
