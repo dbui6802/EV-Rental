@@ -50,6 +50,9 @@ public class Rental {
     @Column(name = "end_time")
     private LocalDateTime endTime;
 
+    @Column(name = "return_time")
+    private LocalDateTime returnTime;
+
     @Column(name = "total_distance")
     private Double totalDistance;
 

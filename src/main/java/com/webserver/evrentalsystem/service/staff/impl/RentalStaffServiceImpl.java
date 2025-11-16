@@ -593,7 +593,7 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         if (totalBill.compareTo(BigDecimal.ZERO) < 0) totalBill = BigDecimal.ZERO;
 
         //Lưu lại rental
-        rental.setEndTime(actualEnd);
+        rental.setReturnTime(actualEnd);
         rental.setTotalCost(totalBill);
         rentalRepository.save(rental);
 
