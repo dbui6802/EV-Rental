@@ -539,9 +539,11 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
         long bookedMinutes = Duration.between(start, expectedEnd).toMinutes();
         long usedMinutes = Duration.between(start, actualEnd).toMinutes();
+        long remainMinutes = bookedMinutes - usedMinutes;
 
         long bookedHours = (bookedMinutes + 59) / 60; // làm tròn lên
         long usedHours = (usedMinutes + 59) / 60;     // làm tròn lên
+
 
         BigDecimal rentalCost = calculateRentalPrice(bookedHours, pricePerHour);
         BigDecimal usedCost = calculateRentalPrice(usedHours, pricePerHour);
@@ -559,8 +561,8 @@ public class RentalStaffServiceImpl implements RentalStaffService {
             }
 
             // 3. Tính tỷ lệ refund
-            BigDecimal refundRate = bookedHours >= 24
-                    ? new BigDecimal("0.8")   // hoàn tối đa 80%
+            BigDecimal refundRate = remainMinutes >= 24 * 60
+                    ? new BigDecimal("0.8")
                     : BigDecimal.ONE;         // hoàn 100% nếu dưới 24h
 
             // 4. Số tiền được hoàn
