@@ -82,13 +82,21 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
     @Override
     public List<ReservationDto> getReservations(ReservationFilterRequest filter) {
-        List<Reservation> reservations = reservationRepository.findAll(
-                Specification.where(ReservationSpecification.hasRenter(filter.getRenterId()))
-                        .and(ReservationSpecification.hasVehicle(filter.getVehicleId()))
-                        .and(ReservationSpecification.hasStatus(ReservationStatus.fromValue(filter.getStatus())))
-                        .and(ReservationSpecification.startFrom(filter.getStartFrom()))
-                        .and(ReservationSpecification.startTo(filter.getStartTo()))
-        );
+        User staff = userValidation.validateStaff();
+        StaffStation activeAssignment = staffStationRepository.findByStaffIdAndIsActiveTrue(staff.getId());
+
+        if (activeAssignment == null) {
+            return Collections.emptyList();
+        }
+
+        Specification<Reservation> spec = Specification.where(ReservationSpecification.isAtStaffStation(activeAssignment.getStation()))
+                .and(ReservationSpecification.hasRenter(filter.getRenterId()))
+                .and(ReservationSpecification.hasVehicle(filter.getVehicleId()))
+                .and(ReservationSpecification.hasStatus(ReservationStatus.fromValue(filter.getStatus())))
+                .and(ReservationSpecification.startFrom(filter.getStartFrom()))
+                .and(ReservationSpecification.startTo(filter.getStartTo()));
+
+        List<Reservation> reservations = reservationRepository.findAll(spec);
 
         return reservations.stream()
                 .map(reservationMapper::toReservationDto)
@@ -265,7 +273,9 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
         rental.setStatus(RentalStatus.CANCELLED);
 
-        if (rental.getDepositAmount() != null && rental.getDepositAmount().compareTo(BigDecimal.ZERO) > 0) {
+        if (rental.getDepositStatus() == DepositStatus.PENDING) {
+            rental.setDepositStatus(DepositStatus.WAIVED);
+        } else if (rental.getDepositAmount() != null && rental.getDepositAmount().compareTo(BigDecimal.ZERO) > 0) {
             rental.setDepositStatus(DepositStatus.FORFEITED);
         }
 
@@ -468,11 +478,25 @@ public class RentalStaffServiceImpl implements RentalStaffService {
             throw new ConflictException("Chỉ có thể thêm chi phí phát sinh cho lượt thuê ở trạng thái WAIT_CONFIRM, IN_USE hoặc WAITING_FOR_PAYMENT");
         }
 
+        BigDecimal fineAmount = request.getFineAmount();
+
+        if (rental.getInsurance() != null && rental.getInsurance().compareTo(BigDecimal.ZERO) > 0) {
+            Vehicle vehicle = rental.getVehicle();
+            if (vehicle != null) {
+                VehicleType vehicleType = vehicle.getType();
+                if (vehicleType == VehicleType.CAR && fineAmount.compareTo(new BigDecimal("3000000")) < 0) {
+                    fineAmount = BigDecimal.ZERO;
+                } else if (vehicleType == VehicleType.MOTORBIKE && fineAmount.compareTo(new BigDecimal("1000000")) < 0) {
+                    fineAmount = BigDecimal.ZERO;
+                }
+            }
+        }
+
         Violation violation = new Violation();
         violation.setRental(rental);
         violation.setStaff(staff);
         violation.setDescription(request.getDescription());
-        violation.setFineAmount(request.getFineAmount());
+        violation.setFineAmount(fineAmount);
         violation.setCreatedAt(LocalDateTime.now());
 
         return violationMapper.toViolationDto(violationRepository.save(violation));
@@ -507,16 +531,18 @@ public class RentalStaffServiceImpl implements RentalStaffService {
         LocalDateTime start = rental.getStartTime();
         LocalDateTime expectedEnd = rental.getEndTime();
         LocalDateTime actualEnd = request.getReturnTime();
+
         if (actualEnd.isBefore(start)) {
             throw new InvalidateParamsException("Thời gian trả xe không hợp lệ");
         }
 
 
-        long bookedHours = Duration.between(start, expectedEnd).toHours();
-        long usedHours = Duration.between(start, actualEnd).toHours();
-        if (Duration.between(start, actualEnd).toMinutes() % 60 != 0) {
-            usedHours++;
-        }
+        long bookedMinutes = Duration.between(start, expectedEnd).toMinutes();
+        long usedMinutes = Duration.between(start, actualEnd).toMinutes();
+        long remainMinutes = bookedMinutes - usedMinutes;
+
+        long bookedHours = (bookedMinutes + 59) / 60; // làm tròn lên
+        long usedHours = (usedMinutes + 59) / 60;     // làm tròn lên
 
 
         BigDecimal rentalCost = calculateRentalPrice(bookedHours, pricePerHour);
@@ -525,44 +551,53 @@ public class RentalStaffServiceImpl implements RentalStaffService {
 
 
         if (actualEnd.isBefore(expectedEnd)) {
-            BigDecimal refund = rentalCost.subtract(usedCost);
-            if (refund.compareTo(BigDecimal.ZERO) < 0) refund = BigDecimal.ZERO;
 
-            BigDecimal refundRate = BigDecimal.ONE;
-            if (bookedHours >= 24) {
-                refundRate = new BigDecimal("0.8");
+            // 1. Tính phần tiền chưa dùng
+            BigDecimal unusedCost = rentalCost.subtract(usedCost);
+
+            // 2. Không cho âm
+            if (unusedCost.compareTo(BigDecimal.ZERO) < 0) {
+                unusedCost = BigDecimal.ZERO;
             }
 
-            refund = refund.multiply(refundRate);
-            totalBill = totalBill.subtract(refund);
+            // 3. Tính tỷ lệ refund
+            BigDecimal refundRate = remainMinutes >= 24 * 60
+                    ? new BigDecimal("0.8")
+                    : BigDecimal.ONE;         // hoàn 100% nếu dưới 24h
+
+            // 4. Số tiền được hoàn
+            BigDecimal refund = unusedCost.multiply(refundRate);
+
+            // 5. Tổng tiền khách phải trả
+            totalBill = rentalCost.subtract(refund);
         }
 
 
         if (actualEnd.isAfter(expectedEnd)) {
             long lateMinutes = Duration.between(expectedEnd, actualEnd).toMinutes();
             if (lateMinutes > 10) {
-                long lateHours = (long) Math.ceil(lateMinutes / 60.0);
+                long lateHours = (lateMinutes + 59) / 60; // làm tròn lên
                 BigDecimal lateFee = pricePerHour.multiply(BigDecimal.valueOf(lateHours));
                 totalBill = totalBill.add(lateFee);
             }
         }
 
-
+        //Phí vi phạm
         List<Violation> violations = violationRepository.findByRentalId(rentalId);
         BigDecimal violationFee = violations.stream()
                 .map(v -> v.getFineAmount() != null ? v.getFineAmount() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         totalBill = totalBill.add(violationFee);
 
-
+        //Bảo hiểm
         BigDecimal insurance = rental.getInsurance() != null ? rental.getInsurance() : BigDecimal.ZERO;
         totalBill = totalBill.add(insurance);
 
-
+        //Không cho âm
         if (totalBill.compareTo(BigDecimal.ZERO) < 0) totalBill = BigDecimal.ZERO;
 
-
-        rental.setEndTime(actualEnd);
+        //Lưu lại rental
+        rental.setReturnTime(actualEnd);
         rental.setTotalCost(totalBill);
         rentalRepository.save(rental);
 
@@ -575,35 +610,35 @@ public class RentalStaffServiceImpl implements RentalStaffService {
                 .build();
     }
 
-    private BigDecimal calculateRentalPrice(long hours, BigDecimal pricePerHour) {
-        BigDecimal total = BigDecimal.ZERO;
-        int remaining = (int) hours;
+        private BigDecimal calculateRentalPrice(long hours, BigDecimal pricePerHour) {
+            BigDecimal total = BigDecimal.ZERO;
+            int remaining = (int) hours;
 
-        while (remaining > 0) {
-            if (remaining >= 24) {
-                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(24))
-                        .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.125"))));
-                remaining -= 24;
-            } else if (remaining >= 12) {
-                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(12))
-                        .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.10"))));
-                remaining -= 12;
-            } else if (remaining >= 8) {
-                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(8))
-                        .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.075"))));
-                remaining -= 8;
-            } else if (remaining >= 4) {
-                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(4))
-                        .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.05"))));
-                remaining -= 4;
-            } else {
-                total = total.add(pricePerHour.multiply(BigDecimal.valueOf(remaining)));
-                remaining = 0;
+            while (remaining > 0) {
+                if (remaining >= 24) {
+                    total = total.add(pricePerHour.multiply(BigDecimal.valueOf(24))
+                            .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.125"))));
+                    remaining -= 24;
+                } else if (remaining >= 12) {
+                    total = total.add(pricePerHour.multiply(BigDecimal.valueOf(12))
+                            .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.10"))));
+                    remaining -= 12;
+                } else if (remaining >= 8) {
+                    total = total.add(pricePerHour.multiply(BigDecimal.valueOf(8))
+                            .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.075"))));
+                    remaining -= 8;
+                } else if (remaining >= 4) {
+                    total = total.add(pricePerHour.multiply(BigDecimal.valueOf(4))
+                            .multiply(BigDecimal.ONE.subtract(new BigDecimal("0.05"))));
+                    remaining -= 4;
+                } else {
+                    total = total.add(pricePerHour.multiply(BigDecimal.valueOf(remaining)));
+                    remaining = 0;
+                }
             }
-        }
 
-        return total;
-    }
+            return total;
+        }
 
     @Override
     public void confirmPayment(Long rentalId) {

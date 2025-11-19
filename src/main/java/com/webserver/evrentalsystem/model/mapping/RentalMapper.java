@@ -10,5 +10,6 @@ public interface RentalMapper {
     @Mapping(source = "rentalType.value", target = "rentalType")
     @Mapping(source = "depositStatus.value", target = "depositStatus")
     @Mapping(source = "status.value", target = "status")
+    @Mapping(source = "returnTime", target = "returnTime")
     RentalDto toRentalDto(Rental rental);
 }

@@ -40,6 +40,9 @@ public class RentalDto {
     @Schema(description = "Thời gian kết thúc thuê")
     private LocalDateTime endTime;
 
+    @Schema(description = "Thời gian trả xe thực tế")
+    private LocalDateTime returnTime;
+
     @Schema(description = "Quãng đường di chuyển (km)", example = "25.7")
     private Double totalDistance;
 
@@ -78,6 +81,4 @@ public class RentalDto {
 
     @Schema(description = "Odometer (km) lúc nhận xe trả về")
     private Integer odoEnd;
-
 }
-

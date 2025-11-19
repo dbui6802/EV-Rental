@@ -7,8 +7,8 @@ public enum DepositStatus {
     PENDING("pending"),
     HELD("held"),
     REFUNDED("refunded"),
-    FORFEITED("forfeited");
-
+    FORFEITED("forfeited"),
+    WAIVED("waived");
     private final String value;
 
     DepositStatus(String value) {

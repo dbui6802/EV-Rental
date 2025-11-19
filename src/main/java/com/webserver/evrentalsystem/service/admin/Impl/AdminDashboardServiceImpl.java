@@ -1,5 +1,6 @@
 package com.webserver.evrentalsystem.service.admin.impl;
 
+import com.webserver.evrentalsystem.entity.RentalStatus;
 import com.webserver.evrentalsystem.model.dto.response.RevenueResponse;
 import com.webserver.evrentalsystem.repository.RentalRepository;
 import com.webserver.evrentalsystem.service.admin.AdminDashboardService;
@@ -24,10 +25,10 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
 
-        BigDecimal totalRevenue = rentalRepository.findTotalRevenue(startDateTime, endDateTime, stationId);
+        BigDecimal totalRevenue = rentalRepository.findTotalRevenue(startDateTime, endDateTime, stationId, RentalStatus.RETURNED);
         if (totalRevenue == null) totalRevenue = BigDecimal.ZERO;
 
-        List<Object[]> results = rentalRepository.findRevenueByStation(startDateTime, endDateTime, stationId);
+        List<Object[]> results = rentalRepository.findRevenueByStation(startDateTime, endDateTime, stationId, RentalStatus.RETURNED);
         Map<String, BigDecimal> revenueByStation = new HashMap<>();
 
         for (Object[] row : results) {

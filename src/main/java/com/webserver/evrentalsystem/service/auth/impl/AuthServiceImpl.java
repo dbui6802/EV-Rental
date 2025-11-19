@@ -12,6 +12,7 @@ import com.webserver.evrentalsystem.model.dto.response.SignInResponse;
 import com.webserver.evrentalsystem.model.mapping.UserMapper;
 import com.webserver.evrentalsystem.repository.UserRepository;
 import com.webserver.evrentalsystem.service.auth.AuthService;
+import com.webserver.evrentalsystem.service.auth.OtpAttemptService;
 import com.webserver.evrentalsystem.service.email.EmailService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
 import com.webserver.evrentalsystem.utils.CookieUtils;
@@ -57,6 +58,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private OtpAttemptService otpAttemptService;
 
     private static final long OTP_VALID_DURATION = 5 * 60 * 1000; // 5 minutes
     private static final long RESET_TOKEN_VALID_DURATION_MINUTES = 15; // 15 minutes
@@ -186,12 +190,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public Map<String, String> verifyOtp(String email, String otp) {
+        otpAttemptService.checkLockout(email);
+
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw new UserNotFoundException("Người dùng không tồn tại");
         }
 
         if (user.getOtp() == null || !user.getOtp().equals(otp)) {
+            otpAttemptService.recordFailedAttempt(email);
             throw new InvalidateParamsException("OTP không hợp lệ");
         }
 
@@ -200,20 +207,22 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidateParamsException("OTP đã hết hạn");
         }
 
-        // Case 1: This is for account registration verification
+        otpAttemptService.resetAttempts(email);
+
+        // Trường hợp 1: Dùng để xác minh khi đăng ký tài khoản
         if (!user.isVerified()) {
             user.setVerified(true);
             user.setOtp(null);
             user.setOtpRequestedTime(null);
             userRepository.save(user);
-            return Collections.emptyMap();
+            return Collections.emptyMap(); // Không cần token, chỉ cần xác minh OTP
         }
-        // Case 2: This is for password reset verification
+        // Trường hợp 2: Dùng để xác minh khi đặt lại (quên) mật khẩu
         else {
             String token = UUID.randomUUID().toString();
             user.setResetPasswordToken(token);
             user.setResetPasswordTokenExpiry(LocalDateTime.now().plusMinutes(RESET_TOKEN_VALID_DURATION_MINUTES));
-            user.setOtp(null); // OTP is used, clear it
+            user.setOtp(null); // OTP đã được sử dụng, cần xóa nó
             user.setOtpRequestedTime(null);
             userRepository.save(user);
 
@@ -225,6 +234,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void resendOtp(String email) {
+        otpAttemptService.checkLockout(email);
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw new UserNotFoundException("Người dùng không tồn tại");
@@ -240,6 +250,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void forgotPassword(String email) {
+        otpAttemptService.checkLockout(email);
         User user = userRepository.findByEmail(email);
         if (user == null) {
             throw new UserNotFoundException("Không tìm thấy người dùng với email này");
