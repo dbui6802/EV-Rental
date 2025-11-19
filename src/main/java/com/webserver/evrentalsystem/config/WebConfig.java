@@ -25,6 +25,6 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins("http://localhost:5173") // FE localhost (Vite)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(true); // nếu bạn dùng cookie/token
+                .allowCredentials(true); // nếu dùng cookie/token
     }
 }
