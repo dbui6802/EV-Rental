@@ -1,6 +1,5 @@
 package com.webserver.evrentalsystem.entity;
 
-import com.webserver.evrentalsystem.jpaconverter.IncidentSeverityConverter;
 import com.webserver.evrentalsystem.jpaconverter.IncidentStatusConverter;
 import jakarta.persistence.*;
 import lombok.*;
@@ -23,7 +22,7 @@ public class IncidentReport {
     private Vehicle vehicle;
 
     @ManyToOne
-    @JoinColumn(name = "staff_id", nullable = false)
+    @JoinColumn(name = "staff_id", nullable = true)
     private User staff;
 
     @ManyToOne
@@ -33,17 +32,9 @@ public class IncidentReport {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Convert(converter = IncidentSeverityConverter.class)
-    @Column(nullable = false)
-    private IncidentSeverity severity;
-
     @Convert(converter = IncidentStatusConverter.class)
     @Column(nullable = false)
     private IncidentStatus status;
-
-    @ManyToOne
-    @JoinColumn(name = "admin_id")
-    private User admin;
 
     @Column(columnDefinition = "TEXT", name = "resolution_notes")
     private String resolutionNotes;

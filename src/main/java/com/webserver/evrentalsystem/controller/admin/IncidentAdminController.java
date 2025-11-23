@@ -32,14 +32,4 @@ public class IncidentAdminController {
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(incidentAdminService.getAllIncidents(status));
     }
-
-    @Operation(
-            summary = "Admin cập nhật trạng thái một báo cáo sự cố",
-            description = "API để Admin cập nhật trạng thái một báo cáo sự cố (IN_REVIEW, RESOLVED). Khi chuyển sang RESOLVED, trạng thái của xe sẽ được cập nhật thành AWAITING_INSPECTION."
-    )
-    @PutMapping
-    public ResponseEntity<IncidentReportDto> updateIncidentStatus(
-            @RequestBody ResolveIncidentRequest request) {
-        return ResponseEntity.ok(incidentAdminService.resolveIncident(request));
-    }
 }

@@ -14,27 +14,30 @@ public class IncidentReportDto {
     @Schema(description = "ID báo cáo sự cố", example = "1001")
     private Long id;
 
-    @Schema(description = "Xe")
+    @Schema(description = "Xe liên quan đến sự cố")
     private VehicleDto vehicle;
 
-    @Schema(description = "Rental liên quan ( nếu có )")
-    private RentalDto rental;
+    @Schema(description = "Người thuê xe báo cáo")
+    private UserDto renter;
 
-    @Schema(description = "Staff báo cáo", example = "7")
+    @Schema(description = "Nhân viên chịu trách nhiệm xử lý")
     private UserDto staff;
 
     @Schema(description = "Mô tả sự cố", example = "Xe bị thủng lốp khi đang di chuyển")
     private String description;
 
-    @Schema(description = "Mức độ nghiêm trọng", example = "HIGH")
-    private String severity;
-
     @Schema(description = "Trạng thái báo cáo", example = "PENDING")
     private String status;
 
-    @Schema(description = "Ghi chú xử lý của Admin", example = "Đã thay lốp tại Gara ABC")
+    @Schema(description = "Ghi chú xử lý", example = "Đã thay lốp tại Gara ABC")
     private String resolutionNotes;
 
     @Schema(description = "Thời gian tạo báo cáo", example = "2025-09-27T10:15:30")
     private LocalDateTime createdAt;
+
+    @Schema(description = "Thời gian xử lý xong báo cáo", example = "2025-09-27T11:00:00")
+    private LocalDateTime resolvedAt;
+
+    @Schema(description = "ID của hợp đồng thuê xe liên quan", example = "52")
+    private Long rentalId;
 }

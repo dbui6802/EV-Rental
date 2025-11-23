@@ -1,123 +1,112 @@
 package com.webserver.evrentalsystem.service.staff.impl;
 
 import com.webserver.evrentalsystem.entity.*;
-import com.webserver.evrentalsystem.exception.ConflictException;
-import com.webserver.evrentalsystem.exception.InvalidateParamsException;
+import com.webserver.evrentalsystem.exception.BadRequestException;
 import com.webserver.evrentalsystem.exception.NotFoundException;
 import com.webserver.evrentalsystem.model.dto.entitydto.IncidentReportDto;
-import com.webserver.evrentalsystem.model.dto.request.IncidentReportRequest;
+import com.webserver.evrentalsystem.model.dto.request.IncidentReportUpdateRequest;
 import com.webserver.evrentalsystem.model.mapping.IncidentReportMapper;
 import com.webserver.evrentalsystem.repository.IncidentReportRepository;
 import com.webserver.evrentalsystem.repository.RentalRepository;
 import com.webserver.evrentalsystem.repository.VehicleRepository;
-import com.webserver.evrentalsystem.repository.StaffStationRepository;
 import com.webserver.evrentalsystem.service.staff.IncidentReportStaffService;
 import com.webserver.evrentalsystem.service.validation.UserValidation;
-import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
-@Transactional
 public class IncidentReportStaffServiceImpl implements IncidentReportStaffService {
 
     @Autowired
     private IncidentReportRepository incidentReportRepository;
-
-    @Autowired
-    private VehicleRepository vehicleRepository;
-
     @Autowired
     private RentalRepository rentalRepository;
-
+    @Autowired
+    private VehicleRepository vehicleRepository;
+    @Autowired
+    private IncidentReportMapper incidentReportMapper;
     @Autowired
     private UserValidation userValidation;
 
-    @Autowired
-    private IncidentReportMapper incidentReportMapper;
-
-    @Autowired
-    private StaffStationRepository staffStationRepository;
-
-    @Override
-    public IncidentReportDto createIncidentReport(IncidentReportRequest request) {
-        User staff = userValidation.validateStaff();
-
-        Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
-                .orElseThrow(() -> new NotFoundException("Không tìm thấy xe"));
-
-
-        boolean hasExistingIncident = incidentReportRepository.existsByVehicleAndStatusIn(
-                vehicle,
-                List.of(IncidentStatus.PENDING, IncidentStatus.IN_REVIEW)
-        );
-
-        if (hasExistingIncident) {
-            throw new ConflictException("Đã tồn tại một báo cáo sự cố cho xe này đang ở trạng thái chờ xử lý hoặc đang xem xét.");
-        }
-
-        vehicle.setStatus(VehicleStatus.MAINTENANCE);
-        vehicleRepository.save(vehicle);
-
-        Rental rental = null;
-        if (request.getRentalId() != null) {
-            rental = rentalRepository.findById(request.getRentalId())
-                    .orElseThrow(() -> new NotFoundException("Không tìm thấy lượt thuê"));
-        }
-
-        IncidentReport report = new IncidentReport();
-        report.setVehicle(vehicle);
-        report.setRental(rental);
-        report.setStaff(staff);
-        report.setDescription(request.getDescription());
-        report.setSeverity(request.getSeverity());
-        report.setStatus(IncidentStatus.PENDING);
-        report.setCreatedAt(LocalDateTime.now());
-
-        report = incidentReportRepository.save(report);
-        return incidentReportMapper.toIncidentReportDto(report);
-    }
-
     @Override
     public List<IncidentReportDto> getAllIncidents(String status) {
-        User staff = userValidation.validateStaff();
-        StaffStation activeAssignment = staffStationRepository.findByStaffIdAndIsActiveTrue(staff.getId());
-
-        if (activeAssignment == null) {
-            return Collections.emptyList();
-        }
-        Long stationId = activeAssignment.getStation().getId();
-
-        Specification<IncidentReport> spec = (root, query, cb) -> {
-            return cb.equal(root.get("vehicle").get("station").get("id"), stationId);
-        };
-
-        if (status != null && !status.isBlank()) {
+        userValidation.validateStaff();
+        List<IncidentReport> incidentReports;
+        if (status != null && !status.isEmpty()) {
             try {
                 IncidentStatus incidentStatus = IncidentStatus.valueOf(status.toUpperCase());
-                spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), incidentStatus));
+                incidentReports = incidentReportRepository.findByStatus(incidentStatus);
             } catch (IllegalArgumentException e) {
-                throw new InvalidateParamsException("Giá trị trạng thái sự cố không hợp lệ: " + status);
+                throw new BadRequestException("Trạng thái không hợp lệ: " + status);
             }
+        } else {
+            incidentReports = incidentReportRepository.findAll();
         }
-
-        List<IncidentReport> incidents = incidentReportRepository.findAll(spec);
-
-        return incidents.stream()
-                .map(incidentReportMapper::toIncidentReportDto)
-                .collect(Collectors.toList());
+        return incidentReportMapper.toIncidentReportDtoList(incidentReports);
     }
 
     @Override
     public IncidentReportDto getIncidentById(Long id) {
+        userValidation.validateStaff();
         IncidentReport incidentReport = incidentReportRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy báo cáo sự cố với ID: " + id));
         return incidentReportMapper.toIncidentReportDto(incidentReport);
+    }
+
+
+    @Override
+    @Transactional
+    public IncidentReportDto updateIncidentReport(Long id, IncidentReportUpdateRequest request) {
+        User staff = userValidation.validateStaff();
+
+        IncidentReport incidentReport = incidentReportRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Không tìm thấy báo cáo sự cố với ID: " + id));
+
+        // Chỉ xử lý logic khi sự cố được giải quyết
+        if (request.getStatus() == IncidentStatus.RESOLVED) {
+            // Ghi chú xử lý là bắt buộc
+            if (request.getResolutionNotes() == null || request.getResolutionNotes().isBlank()) {
+                throw new BadRequestException("Ghi chú xử lý là bắt buộc khi chuyển trạng thái thành RESOLVED.");
+            }
+
+            // ID xe mới là bắt buộc
+            if (request.getNewVehicleId() == null) {
+                throw new BadRequestException("ID của xe mới là bắt buộc để giải quyết sự cố và đổi xe.");
+            }
+
+            Rental rental = incidentReport.getRental();
+            Vehicle oldVehicle = incidentReport.getVehicle();
+
+            // 1. Xe cũ chuyển sang trạng thái chờ kiểm tra
+            oldVehicle.setStatus(VehicleStatus.AWAITING_INSPECTION);
+            vehicleRepository.save(oldVehicle);
+
+            // 2. Lấy và kiểm tra xe mới
+            Vehicle newVehicle = vehicleRepository.findById(request.getNewVehicleId())
+                    .orElseThrow(() -> new NotFoundException("Không tìm thấy xe mới với ID: " + request.getNewVehicleId()));
+
+            if (newVehicle.getStatus() != VehicleStatus.AVAILABLE) {
+                throw new BadRequestException("Xe mới không sẵn sàng để cho thuê.");
+            }
+
+            // 3. Cập nhật hợp đồng thuê để trỏ đến xe mới
+            rental.setVehicle(newVehicle);
+            rentalRepository.save(rental);
+
+            // 4. Cập nhật trạng thái xe mới
+            newVehicle.setStatus(VehicleStatus.RENTED);
+            vehicleRepository.save(newVehicle);
+        }
+
+        // Cập nhật thông tin báo cáo sự cố
+        incidentReport.setStatus(request.getStatus());
+        incidentReport.setResolutionNotes(request.getResolutionNotes());
+        incidentReport.setStaff(staff);
+
+        IncidentReport updatedIncident = incidentReportRepository.save(incidentReport);
+        return incidentReportMapper.toIncidentReportDto(updatedIncident);
     }
 }
